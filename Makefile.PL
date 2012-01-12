@@ -7,6 +7,9 @@ license  'perl';
 
 build_requires 'Test::More';
 
+requires 'Convert::Color' => '0.08';
+requires 'Data::Types' => '0.09';
+
 auto_install;
 
 WriteAll;
