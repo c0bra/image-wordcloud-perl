@@ -1,6 +1,7 @@
 #!perl -T
 
-use Test::More tests => 10;
+use strict;
+use Test::More tests => 11;
 use Test::Exception;
 
 BEGIN {
@@ -18,11 +19,16 @@ my %wordhash = map { shift @words => $_ } (1 .. ($#words+1));
 is(scalar keys(%wordhash), 6, 'Starting with right number of words');
 
 $wc->words(\%wordhash);
+is(scalar keys (%{$wc->{words}}), 6, 'Got right number of words from hash element');
 
-is(scalar keys (%{$wc->{words}}), 6, 'Got right number of words');
+my $get_words = $wc->words();
+is(scalar keys %wordhash, scalar keys %$get_words, 'Got right number of words with ->words() method');
 
 is($wc->{words}->{'this'}, 1,  'Right count for first word in list');
 is($wc->{words}->{'words'}, 6, 'Right count for last word in list');
+
+# ***TODO: test adding words as an arrayref
+
 
 $wc = new HTML::WordCloud(word_count => 2);
 
