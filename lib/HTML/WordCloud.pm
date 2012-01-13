@@ -7,8 +7,11 @@ use warnings;
 use Carp qw(carp croak confess);
 use Params::Validate qw(:all);
 use Data::Types qw(:int :float);
+use Search::Dict;
 
 our $golden_ratio_conjugate = 0.618033988749895;
+
+our $boring_word_dict_file = "./share/pos/part-of-speech.txt";
 
 =head1 NAME
 
@@ -44,18 +47,70 @@ sub new {
     my $proto = shift;
 
     my %opts = validate(@_, {
-        dates       => { type => ARRAYREF,                  optional => 1 },
-        profile     => { type => SCALAR | OBJECT | HASHREF, optional => 1 },
-        clustering  => { type => SCALAR | HASHREF,          optional => 1, },
+        word_count   => { type => SCALAR, optional => 1 },
+        prune_boring => { type => SCALAR, optional => 1, default => 1 },
     });
+    
+    # ***TODO: Figure out how many words to use based on image size?
+    $opts{word_count} ||= 30;
 
     my $class = ref( $proto ) || $proto;
     my $self = { #Will need to allow for params passed to constructor
-        
+			words        => {},
+      word_count   => $opts{word_count},
+      prune_boring => $opts{prune_boring},
     };
     bless($self, $class);
 
     return $self;
+}
+
+=head2 words(\%words_to_use)
+
+Set up hashref \%words_to_use as the words we build the word cloud from.
+
+Keys are the words, values are their count.
+
+=cut
+
+sub words {
+	my $self = shift;
+	
+	my @opts = validate_pos(@_,
+  	{ type => HASHREF, optional => 0 },
+  );
+  
+  my %words = %{ $opts[0] };
+  
+  # Blank out the current word list;
+  $self->{word} = {};
+  
+  # Sort the words by count and let N number of words through, based on $self->{word_count}
+  my $word_count = 1;
+  foreach my $word (sort { $words{$b} <=> $words{$a} } keys %words) {
+  	last if $word_count > $self->{word_count};
+  	
+  	my $count = $words{$word};
+  	
+  	# Add this word to our list of words
+  	$self->{words}->{$word} = $count;
+  	
+  	$word_count++;
+  }
+}
+
+=head2 cloud()
+
+Make the word cloud! Returns an image file location
+
+=cut
+
+sub cloud {
+	my $self = shift;
+	
+	self->_prune_boring_words();
+	
+	return "";
 }
 
 =head2 random_palette($color_count, [$saturation, $value])
@@ -67,6 +122,7 @@ Return value: C<\@colors>
 
 =cut
 
+# Stolen from: http://martin.ankerl.com/2009/12/09/how-to-create-random-colors-programmatically/
 sub random_palette {
 	my $self = shift;
 	
@@ -87,7 +143,7 @@ sub random_palette {
 		$h += $golden_ratio_conjugate;
   	$h %= 1;
   	
-		my ($r, $g, $b) = &hsv_to_rgb(rand(), $opts{saturation}, $opts{value});
+		my ($r, $g, $b) = $self->_hsv_to_rgb(rand(), $opts{saturation}, $opts{value});
 		
 		push (@colors, [$r, $g, $b]);
 	}
@@ -95,12 +151,11 @@ sub random_palette {
 	return \@colors;
 }
 
-=head2 hsv_to_rgb
-
-Convert na HSV color to RGB, nicely.
-
-=cut 
-sub hsv_to_rgb {
+# Convert HSV colors to RGB, in a pretty way
+# Stolen from: http://martin.ankerl.com/2009/12/09/how-to-create-random-colors-programmatically/
+sub _hsv_to_rgb {
+	my $self = shift;
+	
 	my ($h, $s, $v) = @_;
 	
 	my $h_i = int($h * 6);
@@ -125,12 +180,66 @@ sub hsv_to_rgb {
 	);
 }
 
-
-=head2 function2
-
-=cut
-
-sub function2 {
+# Remove "boring" words from a word list
+sub _prune_boring_words {
+	my $self = shift;
+	
+	my @opts = validate_pos(@_, { type => HASHREF, optional => 1 });
+	
+	# Either use the words supplied to the subroutine or use what we have in the object
+	my $words = {};
+	if ($opts[0]) {
+		$words = $opts[0];
+	}
+	else {
+		$words = $self->{words};
+	}
+	
+	# Open "boring" word dictionary
+	open(my $dict, '<', $boring_word_dict_file);
+	
+	foreach my $word (keys %$words) {
+		# Search for the word in the dict file
+		#look $dict, $word, 0, 1;
+		look $dict, $word, {
+			dict => 0,
+			fold => 1,
+			cmp => sub {
+				($a eq $b) ? 0 : 1;
+			}
+		};
+		
+		my $found = <$dict>;
+		chomp $found; # strip newline
+		
+		#print "LOOK: '$word' <-> FOUND: '$found'\n";
+		
+		# If we found a word and it's equal to our word
+		if (defined $found && $found) {
+			# Strip off the parts of speech bit at the end of the line and capture it
+			$found =~ s/\s(.+)$//;
+			my ($parts_of_speech) = $1;
+			
+			$parts_of_speech =~ s/\|//; # strip pipes
+			
+			$found =~ s/\s*$//; # trim trailing whitespace
+			#$found = lc($found); # lower-case the found word, sometimes the first letter is upper (dunno why)
+			
+			# Turn the parts of speech into a hash
+			#my %parts = map { $_ => 1 } split('', $parts_of_speech);
+			
+			# Skip if we didn't actually find the word
+			next if (lc($word) ne lc($found));
+			
+			#print "WORD: $word : $parts_of_speech\n";
+			
+			# If this word is a definite article (D), or indefinite article (I), remove it
+			#if (exists $parts{'D'} || exists $parts{I}) {
+			if ($parts_of_speech =~ /[DI]/o) {
+				delete $words->{$word};
+			}
+		}
+	}
 }
 
 =head1 AUTHOR
