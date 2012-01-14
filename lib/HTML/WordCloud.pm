@@ -15,7 +15,9 @@ use GD::Text::Align;
 our $golden_ratio_conjugate = 0.618033988749895;
 
 our $font_path = "./share/fonts/";
+
 our $boring_word_dict_file = "./share/pos/part-of-speech.txt";
+our $stop_word_dict_file = "./share/pos/stop_words.txt";
 
 our @fonts = qw(
 	GeosansLight.ttf
@@ -66,7 +68,6 @@ sub new {
     my $class = ref( $proto ) || $proto;
     my $self = { #Will need to allow for params passed to constructor
 			words        => {},
-			word_list    => [],
       word_count   => $opts{word_count},
       prune_boring => $opts{prune_boring},
     };
@@ -99,12 +100,15 @@ sub words {
 	}
 	elsif (ref($opts[0]) eq 'ARRAY') {
 		foreach my $word(map { lc } @{ $opts[0] }) {
+			$word =~ s/\W//o;
 			$words{ $word }++;
 		}
 	}
   
   # Blank out the current word list;
-  $self->{word} = {};
+  $self->{words} = {};
+  
+  $self->_prune_stop_words(\%words);
   
   # Sort the words by count and let N number of words through, based on $self->{word_count}
   my $word_count = 1;
@@ -139,16 +143,16 @@ sub cloud {
 	my $self = shift;
 	
 	# Remove boring words from our wordlist
-	$self->_prune_boring_words() if $self->{prune_boring};
+	#$self->_prune_boring_words() if $self->{prune_boring};
 	
 	# Create the image object
-	my $gd = GD::Image->new(800, 600, 1); # 1 = truecolor
+	my $gd = GD::Image->new(800, 600); # 1 = truecolor
 	
+	my $gray  = $gd->colorAllocate(20, 20, 20);
 	my $white = $gd->colorAllocate(255, 255, 255);
-	my $gray  = $gd->colorAllocate(100, 100, 100);
 	my $black = $gd->colorAllocate(0, 0, 0);
 	
-	my $rand_colors = $self->_random_palette(count => 5);
+	my $rand_colors = $self->_random_palette(count => 10);
 	my @palette = ();
 	foreach my $c (@$rand_colors) {
 		my $newc = $gd->colorAllocate($c->[0], $c->[1], $c->[2]);
@@ -156,22 +160,25 @@ sub cloud {
 	}
 	
 	# make the background transparent and interlaced  
-	$gd->transparent($gray);
+	$gd->transparent($white);
   $gd->interlaced('true');
 	
 	# Array of GD::Text::Align objects that we will move around and then draw
 	my @texts = ();
 	
 	# Max font size in points (10% of image height)
-	my $max_points = ($gd->height * 72 / 96) * .20;
+	my $max_points = ($gd->height * 72 / 96) * .40;
 	
 	# Scaling modifier for font sizes
-	my $scaling = $max_points / $self->{max_count};
+	my $max_count = $self->{max_count};
+	my $scaling = $max_points / $max_count;
 	
 	# For each word we have
 	my @areas = ();
-	my $loop = 0;
-	while (my ($word, $count) = each %{ $self->{words} }) {
+	my $loop = 1;
+	foreach my $word (sort { $self->{words}->{$b} <=> $self->{words}->{$a} } keys %{ $self->{words} } ) {
+		my $count = $self->{words}->{$word};
+		
 		my $text = new GD::Text::Align($gd);
 		
 		# Use a random color
@@ -182,7 +189,9 @@ sub cloud {
 		my $font = $font_path . $fonts[ rand @fonts ];
 			unless (-f $font) { carp "Found file '$font' not found"; }
 		
-		my $size = $count * $scaling;
+		#my $size = $count * $scaling;
+		#my $size = ($loop / ($count / $max_count)) * $max_points;
+		my $size = (1 / $loop) * $max_points;
 		
 		$text->set_font($font, $size);
 		
@@ -335,6 +344,58 @@ sub _prune_boring_words {
 			if ($parts_of_speech =~ /[DI]/o) {
 				delete $words->{$word};
 			}
+		}
+	}
+}
+
+sub _prune_stop_words {
+	my $self = shift;
+	
+	my @opts = validate_pos(@_, { type => HASHREF, optional => 1 });
+	
+	if (! -f $stop_word_dict_file) {
+		carp "Stop word file '$stop_word_dict_file' not found, not pruning any words";
+		return;
+	}
+	
+	# Either use the words supplied to the subroutine or use what we have in the object
+	my $words = {};
+	if ($opts[0]) {
+		$words = $opts[0];
+	}
+	else {
+		$words = $self->{words};
+	}
+	
+	# Open "boring" word dictionary
+	open(my $dict, '<', $stop_word_dict_file);
+	
+	foreach my $word (keys %$words) {
+		# Search for the word in the dict file
+		#look $dict, $word, 0, 1;
+		look $dict, $word, {
+			dict => 0,
+			fold => 1,
+		};
+		
+		my $found = <$dict>;
+		
+		# If we found a word and it's equal to our word
+		if (defined $found && $found) {
+			chomp $found; # strip newline
+			next if $found ne $word;
+			
+			#warn "LOOK: '$word' <-> FOUND: '$found'\n";
+			
+			# Strip off the parts of speech bit at the end of the line and capture it
+			#$found =~ s/\s(.+)$//;
+			
+			#$found =~ s/\s*$//; # trim trailing whitespace
+			
+			# Skip if we didn't actually find the word
+			#next if (lc($word) ne lc($found));
+			
+			delete $words->{$word};
 		}
 	}
 }
