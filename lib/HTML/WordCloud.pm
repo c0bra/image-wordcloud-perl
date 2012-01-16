@@ -214,25 +214,15 @@ sub cloud {
 		my ($w, $h) = $text->get('width', 'height');
 		
 		push(@areas, $w * $h);
-
-		my $draw_x = $gd->width - $w;
-		my $draw_y = $gd->height - $h;
-
-		#if ($loop == 1) {
-		#	warn "W: $w - H: $h";
-		#	warn "DX: $draw_x - DY: $draw_y";
-		#	$draw_x = 400;
-		#	$draw_y = 300;
-		#	use Data::Dumper;
-		#	warn Dumper($text->bounding_box(400, 300, 0));
-		#}
 		
 		# Get a random place to draw the text
 		#   1. The text is drawn starting at its lower left corner
 		#	2. So we need to push the y value by the height of the text, but keep it less than the image height
-		my $rand_y = $self->_random_int_between($h, $gd->height);
+		#   3. Keep a padding of 5px around the edges of the image
+		my $rand_y = $self->_random_int_between($h, $gd->height - 5);
+		my $rand_x = $self->_random_int_between(5,  $gd->width - $w - 5);
 		
-		my @bounding = $text->draw(rand $draw_x, $rand_y);
+		my @bounding = $text->draw($rand_x, $rand_y);
 		
 		$loop++;
 	}
