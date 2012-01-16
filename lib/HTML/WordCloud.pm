@@ -148,9 +148,9 @@ sub cloud {
 	#$self->_prune_boring_words() if $self->{prune_boring};
 	
 	# Create the image object
-	my $gd = GD::Image->newTrueColor(800, 600); # 1 = truecolor
+	my $gd = GD::Image->newTrueColor(800, 600);
 	
-	my $gray  = $gd->colorAllocate(20, 20, 20);
+	my $gray  = $gd->colorAllocate(20, 20, 20); # background color
 	my $white = $gd->colorAllocate(255, 255, 255);
 	my $black = $gd->colorAllocate(0, 0, 0);
 	
@@ -158,6 +158,7 @@ sub cloud {
 	my @rand_colors = map { [$self->_hex2rgb($_)] } Color::Scheme->new
 		->from_hue(rand(355))
 		->scheme('analogic')
+		->variation('default')
 		->colors();
 
 	my @palette = ();
@@ -217,16 +218,22 @@ sub cloud {
 		my $draw_x = $gd->width - $w;
 		my $draw_y = $gd->height - $h;
 
-		if ($loop == 1) {
-			warn "W: $w - HL $h";
-			warn "DX: $draw_x - DY: $draw_y";
-			$draw_x = 0;
-			$draw_y = 0;
-			use Data::Dumper;
-			warn Dumper($text->bounding_box(0, 0, 0));
-		}
+		#if ($loop == 1) {
+		#	warn "W: $w - H: $h";
+		#	warn "DX: $draw_x - DY: $draw_y";
+		#	$draw_x = 400;
+		#	$draw_y = 300;
+		#	use Data::Dumper;
+		#	warn Dumper($text->bounding_box(400, 300, 0));
+		#}
 		
-		my @bounding = $text->draw(rand $draw_x, rand $draw_y, 0);
+		# Get a random place to draw the text
+		#   1. The text is drawn starting at its lower left corner
+		#	2. So we need to push the y value by the height of the text, but keep it less than the image height
+		my $rand_y = $self->_random_int_between($h, $gd->height);
+		
+		my @bounding = $text->draw(rand $draw_x, $rand_y);
+		
 		$loop++;
 	}
 	
@@ -428,6 +435,16 @@ sub _prune_stop_words {
 			delete $words->{$word};
 		}
 	}
+}
+
+sub _random_int_between {
+	my $self = shift;
+	my($min, $max) = @_;
+	
+	# Assumes that the two arguments are integers themselves!
+	return $min if $min == $max;
+	($min, $max) = ($max, $min) if $min > $max;
+	return $min + int rand(1 + $max - $min);
 }
 
 =head1 AUTHOR
