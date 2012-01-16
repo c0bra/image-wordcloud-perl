@@ -4,6 +4,7 @@ after
 all
 almost
 among
+an
 and
 any
 are
@@ -42,6 +43,7 @@ is
 it
 its
 last
+like
 long
 made
 may
@@ -61,6 +63,8 @@ on
 one
 only
 or
+other
+out
 own
 said
 same
