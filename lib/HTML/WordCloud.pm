@@ -11,6 +11,7 @@ use Data::Types qw(:int :float);
 use Search::Dict;
 use GD;
 use GD::Text::Align;
+use Color::Scheme;
 
 our $golden_ratio_conjugate = 0.618033988749895;
 
@@ -19,9 +20,10 @@ our $font_path = "./share/fonts/";
 our $boring_word_dict_file = "./share/pos/part-of-speech.txt";
 our $stop_word_dict_file = "./share/pos/stop_words.txt";
 
+#GeosansLight.ttf
+#GeosansLight-Oblique.ttf
 our @fonts = qw(
-	GeosansLight.ttf
-	GeosansLight-Oblique.ttf
+	AveriaSerif-Bold.ttf
 );
 
 =head1 NAME
@@ -146,28 +148,34 @@ sub cloud {
 	#$self->_prune_boring_words() if $self->{prune_boring};
 	
 	# Create the image object
-	my $gd = GD::Image->new(800, 600); # 1 = truecolor
+	my $gd = GD::Image->newTrueColor(800, 600); # 1 = truecolor
 	
 	my $gray  = $gd->colorAllocate(20, 20, 20);
 	my $white = $gd->colorAllocate(255, 255, 255);
 	my $black = $gd->colorAllocate(0, 0, 0);
 	
-	my $rand_colors = $self->_random_palette(count => 10);
+	#my $rand_colors = $self->_random_palette(count => 10);
+	my @rand_colors = map { [$self->_hex2rgb($_)] } Color::Scheme->new
+		->from_hue(rand(355))
+		->scheme('analogic')
+		->colors();
+
 	my @palette = ();
-	foreach my $c (@$rand_colors) {
+	foreach my $c (@rand_colors) {
 		my $newc = $gd->colorAllocate($c->[0], $c->[1], $c->[2]);
 		push @palette, $newc;
 	}
 	
 	# make the background transparent and interlaced  
 	$gd->transparent($white);
-  $gd->interlaced('true');
+  	$gd->interlaced('true');
 	
 	# Array of GD::Text::Align objects that we will move around and then draw
 	my @texts = ();
 	
-	# Max font size in points (10% of image height)
-	my $max_points = ($gd->height * 72 / 96) * .40;
+	# Max font size in points (40% of image height)
+	my $max_points = ($gd->height * 72 / 96) * .30;
+	my $min_points = 8;
 	
 	# Scaling modifier for font sizes
 	my $max_count = $self->{max_count};
@@ -187,11 +195,13 @@ sub cloud {
 		
 		# Use a random font
 		my $font = $font_path . $fonts[ rand @fonts ];
-			unless (-f $font) { carp "Found file '$font' not found"; }
+			unless (-f $font) { carp "Font file '$font' not found"; }
 		
 		#my $size = $count * $scaling;
 		#my $size = ($loop / ($count / $max_count)) * $max_points;
-		my $size = (1 / $loop) * $max_points;
+		my $size = (1.75 / $loop) * $max_points;
+		$size = $max_points if $size > $max_points;
+		$size = $min_points if $size < $min_points;
 		
 		$text->set_font($font, $size);
 		
@@ -203,8 +213,20 @@ sub cloud {
 		my ($w, $h) = $text->get('width', 'height');
 		
 		push(@areas, $w * $h);
+
+		my $draw_x = $gd->width - $w;
+		my $draw_y = $gd->height - $h;
+
+		if ($loop == 1) {
+			warn "W: $w - HL $h";
+			warn "DX: $draw_x - DY: $draw_y";
+			$draw_x = 0;
+			$draw_y = 0;
+			use Data::Dumper;
+			warn Dumper($text->bounding_box(0, 0, 0));
+		}
 		
-		my @bounding = $text->draw(rand $gd->width * .8, rand $gd->height * .8, 0);
+		my @bounding = $text->draw(rand $draw_x, rand $draw_y, 0);
 		$loop++;
 	}
 	
@@ -279,6 +301,14 @@ sub _hsv_to_rgb {
 		int($g * 256),
 		int($b * 256)
 	);
+}
+
+sub _hex2rgb {
+	my $self = shift;
+	my $hex = shift;
+
+	my @rgb = map {hex($_) } unpack 'a2a2a2', $hex;
+	return @rgb;
 }
 
 # Remove "boring" words from a word list

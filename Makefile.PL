@@ -13,6 +13,7 @@ requires 'List::Util';
 requires 'Search::Dict';
 requires 'GD';
 requires 'GD::Text::Align';
+requires 'Color::Scheme';
 
 auto_install;
 
