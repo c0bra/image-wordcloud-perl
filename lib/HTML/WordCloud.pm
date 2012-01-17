@@ -12,6 +12,7 @@ use Search::Dict;
 use GD;
 use GD::Text::Align;
 use Color::Scheme;
+use Array::Tour::Spiral;
 
 our $golden_ratio_conjugate = 0.618033988749895;
 
@@ -20,10 +21,11 @@ our $font_path = "./share/fonts/";
 our $boring_word_dict_file = "./share/pos/part-of-speech.txt";
 our $stop_word_dict_file = "./share/pos/stop_words.txt";
 
-#GeosansLight.ttf
-#GeosansLight-Oblique.ttf
+# GeosansLight.ttf
+# GeosansLight-Oblique.ttf
+# AveriaSerif-Bold.ttf
 our @fonts = qw(
-	AveriaSerif-Bold.ttf
+	AveriaSerif-Regular.ttf
 );
 
 =head1 NAME
@@ -184,6 +186,8 @@ sub cloud {
 	
 	# For each word we have
 	my @areas = ();
+	#my @drawn_texts = ();
+	my @bboxes = ();
 	my $loop = 1;
 	foreach my $word (sort { $self->{words}->{$b} <=> $self->{words}->{$a} } keys %{ $self->{words} } ) {
 		my $count = $self->{words}->{$word};
@@ -201,6 +205,9 @@ sub cloud {
 		#my $size = $count * $scaling;
 		#my $size = ($loop / ($count / $max_count)) * $max_points;
 		my $size = (1.75 / $loop) * $max_points;
+		
+		# ***TODO: font scaling needs to be based on word frequency, not loop iteration
+		
 		$size = $max_points if $size > $max_points;
 		$size = $min_points if $size < $min_points;
 		
@@ -215,14 +222,72 @@ sub cloud {
 		
 		push(@areas, $w * $h);
 		
-		# Get a random place to draw the text
-		#   1. The text is drawn starting at its lower left corner
-		#	2. So we need to push the y value by the height of the text, but keep it less than the image height
-		#   3. Keep a padding of 5px around the edges of the image
-		my $rand_y = $self->_random_int_between($h, $gd->height - 5);
-		my $rand_x = $self->_random_int_between(5,  $gd->width - $w - 5);
+		# Position to place the word in
+		my ($x, $y);
 		
-		my @bounding = $text->draw($rand_x, $rand_y);
+		# Place the first word in the center of the screen
+		if ($loop == 1) {
+			$x = ($gd->width / 2) - ($w / 2);
+			$y = ($gd->height / 2) + ($h / 4); # I haven't done the math see why dividing the height by 4 works, but it does
+		}
+		else {
+			# Get a random place to draw the text
+			#   1. The text is drawn starting at its lower left corner
+			#	2. So we need to push the y value by the height of the text, but keep it less than the image height
+			#   3. Keep a padding of 5px around the edges of the image
+			#$y = $self->_random_int_between($h, $gd->height - 5);
+			#$x = $self->_random_int_between(5,  $gd->width - $w - 5);
+			
+			# While this text collides with any of the other placed texts, 
+			#   move it in an enlarging spiral around the image 
+			
+			# Start in the center
+			my $this_x = $gd->width / 2;
+			my $this_y = $gd->height / 2;
+			
+			# Make a spiral, TODO: probably need to somehow constrain or filter points that are generated outside the image dimensions
+			my $spiral = Array::Tour::Spiral->new(
+				dimensions => [$gd->height, $gd->width]
+			);
+			
+			my $collision = 1;
+			while ($collision) {
+				foreach my $b (@bboxes) {
+					# (x1,y1) lower left corner
+				    # (x2,y2) lower right corner
+					# (x3,y3) upper right corner
+				    # (x4,y4) upper left corner
+				    
+				    my ($a_x1, $a_y1, $a_x2, $a_y2) = (@$b)[6, 7, 2, 3];
+				    
+				    my ($b_x1, $b_y1, $b_x2, $b_y2) = ($this_x, $this_y + $text->get('height'), $this_x + $text->get('width'), $this_y);
+				    
+				    use Data::Dumper;
+				    warn Dumper([ $a_x1, $a_y1, $a_x2, $a_y2, $b_x1, $b_y1, $b_x2, $b_y2 ]);
+				    
+				    # Upper left to lower right
+				    if ($self->_detect_collision(
+				    	$a_x1, $a_y1, $a_x2, $a_y2,
+				    	$b_x1, $b_y1, $b_x2, $b_y2)) {
+				    	
+				    	$collision = 1;	
+				    	last;
+				    }
+				    else {
+				    	$collision = 0;
+				    }
+				}
+				
+				# Move text
+				($this_x, $this_y) = @{ $spiral->next() };
+			}
+			$x = $this_x;
+			$y = $this_y;
+		}
+		
+		my @bounding = $text->draw($x, $y, 0);
+		#push(@drawn_texts, $text);
+		push(@bboxes, \@bounding);
 		
 		$loop++;
 	}
@@ -424,6 +489,25 @@ sub _prune_stop_words {
 			
 			delete $words->{$word};
 		}
+	}
+}
+
+# Detech a collision between two rectangles
+#	Returns 1 on a collision and 0 on a miss
+sub _detect_collision {
+	my $self = shift;
+	
+	# Top-left to bottom-right
+	my ($a_x1, $a_y1, $a_x2, $a_y2) = @_;
+	my ($b_x1, $b_y1, $b_x2, $b_y2) = @_;
+	
+	# See if any of rect B's points are inside rect A
+	if ($a_x1 < $b_x2 && $a_x2 > $b_x1 &&
+	    $a_y1 < $b_y2 && $a_y2 > $b_y1) {
+	    return 0;	
+	}
+	else {
+		return 1;	
 	}
 }
 
