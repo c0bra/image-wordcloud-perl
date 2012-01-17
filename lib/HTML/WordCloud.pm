@@ -13,6 +13,7 @@ use GD;
 use GD::Text::Align;
 use Color::Scheme;
 use Array::Tour::Spiral;
+use Collision::2D qw(:all);
 
 our $golden_ratio_conjugate = 0.618033988749895;
 
@@ -242,33 +243,45 @@ sub cloud {
 			#   move it in an enlarging spiral around the image 
 			
 			# Start in the center
-			my $this_x = $gd->width / 2;
-			my $this_y = $gd->height / 2;
+			#my $this_x = $gd->width / 2;
+			#my $this_y = $gd->height / 2;
 			
 			# Make a spiral, TODO: probably need to somehow constrain or filter points that are generated outside the image dimensions
+			my $dim = ($gd->width > $gd->height) ? $gd->height : $gd->width;
 			my $spiral = Array::Tour::Spiral->new(
 				dimensions => [$gd->height, $gd->width]
+				#dimensions => $dim
 			);
 			
+			my ($this_x, $this_y) = @{ $spiral->next() };
+			
 			my $collision = 1;
+			my $col_iter = 0;
 			while ($collision) {
 				foreach my $b (@bboxes) {
-					# (x1,y1) lower left corner
+					  # (x1,y1) lower left corner
 				    # (x2,y2) lower right corner
-					# (x3,y3) upper right corner
+					  # (x3,y3) upper right corner
 				    # (x4,y4) upper left corner
 				    
-				    my ($a_x1, $a_y1, $a_x2, $a_y2) = (@$b)[6, 7, 2, 3];
+				    #my ($a_x1, $a_y1, $a_x2, $a_y2) = (@$b)[6, 7, 2, 3];
+				    my ($a_x, $a_y, $a_w, $a_h) = @$b;
 				    
-				    my ($b_x1, $b_y1, $b_x2, $b_y2) = ($this_x, $this_y + $text->get('height'), $this_x + $text->get('width'), $this_y);
+				    #my ($b_x1, $b_y1, $b_x2, $b_y2) = ($this_x, $this_y + $text->get('height'), $this_x + $text->get('width'), $this_y);
+				    my ($b_x, $b_y) = ($this_x, $this_y); # Have to remove the height from the "y" coordinate because Collision::2D draws from the lower left
+				    my ($b_h, $b_w) = ($text->get('width'), $text->get('height'));
 				    
 				    use Data::Dumper;
-				    warn Dumper([ $a_x1, $a_y1, $a_x2, $a_y2, $b_x1, $b_y1, $b_x2, $b_y2 ]);
+				    #warn Dumper([ $a_x1, $a_y1, $a_x2, $a_y2, $b_x1, $b_y1, $b_x2, $b_y2 ]);
+				    warn Dumper([ $a_x, $a_y, $a_w, $a_h, $b_x, $b_y, $b_w, $b_h ]);
 				    
 				    # Upper left to lower right
 				    if ($self->_detect_collision(
-				    	$a_x1, $a_y1, $a_x2, $a_y2,
-				    	$b_x1, $b_y1, $b_x2, $b_y2)) {
+				    	#$a_x1, $a_y1, $a_x2, $a_y2,
+				    	#$b_x1, $b_y1, $b_x2, $b_y2)) {
+				    	$a_x, $a_y, $a_w, $a_h,
+				    	$b_x, $b_y, $b_w, $b_h)) {
+				    	
 				    	
 				    	$collision = 1;	
 				    	last;
@@ -278,8 +291,29 @@ sub cloud {
 				    }
 				}
 				
+				# TESTING:
+				if ($col_iter % 1 == 0) {
+					my $hue = $col_iter;
+					while ($hue > 360) {
+						$hue = $hue - 360;
+					}
+					
+					my ($r,$g,$b) = $self->_hex2rgb( (Color::Scheme->new->from_hue($hue)->colors())[0] );
+					my $c = $gd->colorAllocate($r,$g,$b);
+					
+					
+					#$gd->filledRectangle($this_x, $this_y, $this_x + 10, $this_y + 10, $c);
+					#$gd->string(gdGiantFont, $this_x, $this_y, $col_iter, $c);
+					$gd->setPixel($this_x, $this_y, $c)
+					
+					#my @bo = $text->bounding_box($this_x, $this_y, 0);
+					#$self->_stroke_bbox($gd, $c, @bo);
+				}
+				
 				# Move text
 				($this_x, $this_y) = @{ $spiral->next() };
+				
+				$col_iter++;
 			}
 			$x = $this_x;
 			$y = $this_y;
@@ -287,7 +321,11 @@ sub cloud {
 		
 		my @bounding = $text->draw($x, $y, 0);
 		#push(@drawn_texts, $text);
-		push(@bboxes, \@bounding);
+		
+		$self->_stroke_bbox($gd, undef, @bounding);
+		
+		my @rect = ($bounding[0], $bounding[1], $text->get('width'), $text->get('height'));
+		push(@bboxes, \@rect);
 		
 		$loop++;
 	}
@@ -365,6 +403,7 @@ sub _hsv_to_rgb {
 	);
 }
 
+# Convert a hexadecimal color to a list of rgb values
 sub _hex2rgb {
 	my $self = shift;
 	my $hex = shift;
@@ -492,9 +531,20 @@ sub _prune_stop_words {
 	}
 }
 
-# Detech a collision between two rectangles
+# Detect a collision between two rectangles
 #	Returns 1 on a collision and 0 on a miss
 sub _detect_collision {
+	my $self = shift;
+	
+	# Top-left to bottom-right
+	my ($a_x1, $a_y1, $a_w, $a_h, $b_x1, $b_y1, $b_w, $b_h) = @_;
+	
+	my $rect1 = hash2rect({x => $a_x1, y => $a_y1, w => $a_w, h => $a_h});
+	my $rect2 = hash2rect({x => $b_x1, y => $b_y1, w => $b_w, h => $b_h});
+	
+	return $rect1->intersect($rect2);
+}
+sub _detect_collision2 {
 	my $self = shift;
 	
 	# Top-left to bottom-right
@@ -507,8 +557,23 @@ sub _detect_collision {
 	    return 0;	
 	}
 	else {
-		return 1;	
+		return 1;
 	}
+}
+
+sub _stroke_bbox {
+	my $self = shift;
+	my $gd = shift;
+	my $color = shift;
+	
+	my ($x1, $y1, $x2, $y2, $x3, $y3, $x4, $y4) = @_;
+	
+	$color ||= $gd->colorClosest(255,0,0);
+	
+	$gd->line($x1, $y1, $x2, $y2, $color);
+	$gd->line($x2, $y2, $x3, $y3, $color);
+	$gd->line($x3, $y3, $x4, $y4, $color);
+	$gd->line($x4, $y4, $x1, $y1, $color);
 }
 
 sub _random_int_between {
