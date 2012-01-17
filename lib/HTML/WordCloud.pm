@@ -12,7 +12,7 @@ use Search::Dict;
 use GD;
 use GD::Text::Align;
 use Color::Scheme;
-use Array::Tour::Spiral;
+use Math::PlanePath::TheodorusSpiral;
 use Collision::2D qw(:all);
 
 our $golden_ratio_conjugate = 0.618033988749895;
@@ -153,6 +153,10 @@ sub cloud {
 	# Create the image object
 	my $gd = GD::Image->newTrueColor(800, 600);
 	
+	# Center coordinates of this iamge
+	my $center_x = $gd->width  / 2;
+	my $center_y = $gd->height / 2;
+	
 	my $gray  = $gd->colorAllocate(20, 20, 20); # background color
 	my $white = $gd->colorAllocate(255, 255, 255);
 	my $black = $gd->colorAllocate(0, 0, 0);
@@ -172,7 +176,7 @@ sub cloud {
 	
 	# make the background transparent and interlaced  
 	$gd->transparent($white);
-  	$gd->interlaced('true');
+  $gd->interlaced('true');
 	
 	# Array of GD::Text::Align objects that we will move around and then draw
 	my @texts = ();
@@ -228,8 +232,8 @@ sub cloud {
 		
 		# Place the first word in the center of the screen
 		if ($loop == 1) {
-			$x = ($gd->width / 2) - ($w / 2);
-			$y = ($gd->height / 2) + ($h / 4); # I haven't done the math see why dividing the height by 4 works, but it does
+			$x = $center_x - ($w / 2);
+			$y = $center_y + ($h / 4); # I haven't done the math see why dividing the height by 4 works, but it does
 		}
 		else {
 			# Get a random place to draw the text
@@ -247,16 +251,14 @@ sub cloud {
 			#my $this_y = $gd->height / 2;
 			
 			# Make a spiral, TODO: probably need to somehow constrain or filter points that are generated outside the image dimensions
-			my $dim = ($gd->width > $gd->height) ? $gd->height : $gd->width;
-			my $spiral = Array::Tour::Spiral->new(
-				dimensions => [$gd->height, $gd->width]
-				#dimensions => $dim
-			);
+			my $path = Math::PlanePath::TheodorusSpiral->new;
 			
-			my ($this_x, $this_y) = @{ $spiral->next() };
+			my ($this_x, $this_y) = $path->n_to_xy(1);
+			$this_x += $center_x;
+			$this_y += $center_y;
 			
 			my $collision = 1;
-			my $col_iter = 0;
+			my $col_iter = 1;
 			while ($collision) {
 				foreach my $b (@bboxes) {
 					  # (x1,y1) lower left corner
@@ -310,10 +312,12 @@ sub cloud {
 					#$self->_stroke_bbox($gd, $c, @bo);
 				}
 				
-				# Move text
-				($this_x, $this_y) = @{ $spiral->next() };
-				
 				$col_iter++;
+				
+				# Move text
+				($this_x, $this_y) = $path->n_to_xy($col_iter * 500);
+				$this_x += $center_x;
+				$this_y += $center_y;
 			}
 			$x = $this_x;
 			$y = $this_y;

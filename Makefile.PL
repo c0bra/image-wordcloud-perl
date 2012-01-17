@@ -14,6 +14,7 @@ requires 'Search::Dict';
 requires 'GD';
 requires 'GD::Text::Align';
 requires 'Color::Scheme';
+requires 'Math::PlanePath::TheodorusSpiral';
 
 auto_install;
 
