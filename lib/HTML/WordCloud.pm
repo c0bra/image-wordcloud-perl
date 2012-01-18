@@ -506,11 +506,6 @@ sub _prune_stop_words {
 	
 	my @opts = validate_pos(@_, { type => HASHREF, optional => 1 });
 	
-	if (! -f $stop_word_dict_file) {
-		carp "Stop word file '$stop_word_dict_file' not found, not pruning any words";
-		return;
-	}
-	
 	# Either use the words supplied to the subroutine or use what we have in the object
 	my $words = {};
 	if ($opts[0]) {
@@ -520,37 +515,32 @@ sub _prune_stop_words {
 		$words = $self->{words};
 	}
 	
-	# Open "boring" word dictionary
-	open(my $dict, '<', $stop_word_dict_file);
+	# Read in the stop word file if we haven't already
+	if (! $self->{stop_words}) { $self->_read_stop_file(); }
 	
 	foreach my $word (keys %$words) {
-		# Search for the word in the dict file
-		#look $dict, $word, 0, 1;
-		look $dict, $word, {
-			dict => 0,
-			fold => 1,
-		};
-		
-		my $found = <$dict>;
-		
-		# If we found a word and it's equal to our word
-		if (defined $found && $found) {
-			chomp $found; # strip newline
-			next if $found ne $word;
-			
-			#warn "LOOK: '$word' <-> FOUND: '$found'\n";
-			
-			# Strip off the parts of speech bit at the end of the line and capture it
-			#$found =~ s/\s(.+)$//;
-			
-			#$found =~ s/\s*$//; # trim trailing whitespace
-			
-			# Skip if we didn't actually find the word
-			#next if (lc($word) ne lc($found));
-			
-			delete $words->{$word};
-		}
+			delete $words->{$word} if exists $self->{stop_words}->{ $word };
 	}
+}
+
+sub _read_stop_file {
+	my $self = shift;
+	
+	if (! -f $stop_word_dict_file) {
+		carp "Stop word file '$stop_word_dict_file' not found, not pruning any words";
+		return;
+	}
+	
+	$self->{stop_words} = {};
+	
+	open(my $dict, '<', $stop_word_dict_file);
+	while (my $line = <$dict>) {
+		chomp $line;
+		$self->{stop_words}->{ $line } = 1;
+	}
+	close($dict);
+	
+	return 1;
 }
 
 # Detect a collision between two rectangles
