@@ -24,4 +24,6 @@ binmode STDOUT;
 
 my $img = $wc->cloud();
 
-print $img->png;
+#print $img->png;
+
+write_file('/www/vhosts/c0bra.net/htdocs/words2.png', {binmode => ':raw'}, $img->png);

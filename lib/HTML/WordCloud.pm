@@ -262,35 +262,16 @@ sub cloud {
 			my $collision = 1;
 			my $col_iter = 1;
 			while ($collision) {
+				# New text's coords and width/height
+				# (x1,y1) lower left corner
+		    # (x2,y2) lower right corner
+			  # (x3,y3) upper right corner
+		    # (x4,y4) upper left corner
+				my ($b_x, $b_y, $b_x2, $b_y2) = ( $text->bounding_box($this_x, $this_y) )[6,7,2,3];
+				my ($b_w, $b_h) = ($b_x2 - $b_x, $b_y2 - $b_y);
+				
 				foreach my $b (@bboxes) {
-					  # (x1,y1) lower left corner
-				    # (x2,y2) lower right corner
-					  # (x3,y3) upper right corner
-				    # (x4,y4) upper left corner
-				    
-				    #my ($a_x1, $a_y1, $a_x2, $a_y2) = (@$b)[6, 7, 2, 3];
 				    my ($a_x, $a_y, $a_w, $a_h) = @$b;
-				    
-				    #my ($b_x1, $b_y1, $b_x2, $b_y2) = ($this_x, $this_y + $text->get('height'), $this_x + $text->get('width'), $this_y);
-				    #my ($b_x, $b_y) = ($this_x, $this_y); # Have to remove the height from the "y" coordinate because Collision::2D draws from the lower left
-				    my ($b_x, $b_y, $b_x2, $b_y2) = ( $text->bounding_box($this_x, $this_y) )[6,7,2,3];
-				    #my ($b_w, $b_h) = ($text->get('width'), $text->get('height'));
-				    
-				    #my @bb = $text->bounding_box($this_x, $this_y, 0);
-				    my ($b_w, $b_h) = ($b_x2 - $b_x, $b_y2 - $b_y);
-				    
-				    use Data::Dumper;
-				    #warn Dumper([ $a_x1, $a_y1, $a_x2, $a_y2, $b_x1, $b_y1, $b_x2, $b_y2 ]);
-#				    warn Dumper({
-#				    	 'A-x' => $a_x,
-#				    	 'A-y' => $a_y,
-#				    	 'A-w' => $a_w,
-#				    	 'A-h' => $a_h,
-#				    	 'B-x' => $b_x,
-#				    	 'B-y' => $b_y,
-#				    	 'B-w' => $b_w,
-#				    	 'B-h' => $b_h
-#				    });
 				    
 				    # Upper left to lower right
 				    if ($self->_detect_collision2(
@@ -356,25 +337,16 @@ sub cloud {
 				# Center the spiral
 				$this_x += $center_x;
 				$this_y += $center_y;
-				
-				#last if $col_iter > 1000;
 			}
 			
 			$x = $this_x;
 			$y = $this_y;
 		}
 		
-		my @bounding = $text->draw($x, $y, 0);
-		#$gd->string(gdGiantFont, $x, $y, "here", $gd->colorClosest(255,0,0));
-		#push(@drawn_texts, $text);
-		
+		my @bounding = $text->draw($x, $y, 0);		
 		#$self->_stroke_bbox($gd, undef, @bounding);
 		
-		#my @rect = ($bounding[6], $bounding[7], $text->get('width'), $text->get('height'));
 		my @rect = ($bounding[6], $bounding[7], $bounding[2] - $bounding[6], $bounding[3] - $bounding[7]);
-		
-		#my @rect = ($bounding[0], $bounding[1], $bounding[0] + $bounding[4], $bounding[1] + $bounding[5]);
-		
 		push(@bboxes, \@rect);
 		
 		$loop++;
