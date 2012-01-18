@@ -11,7 +11,6 @@ use Data::Types qw(:int :float);
 use Search::Dict;
 use GD;
 use GD::Text::Align;
-use GD::Text::Wrap;
 use Color::Scheme;
 use Math::PlanePath::TheodorusSpiral;
 use Collision::2D qw(:all);
