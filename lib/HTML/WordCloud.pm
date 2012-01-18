@@ -11,6 +11,7 @@ use Data::Types qw(:int :float);
 use Search::Dict;
 use GD;
 use GD::Text::Align;
+use GD::Text::Wrap;
 use Color::Scheme;
 use Math::PlanePath::TheodorusSpiral;
 use Collision::2D qw(:all);
@@ -150,14 +151,15 @@ sub cloud {
 	# Remove boring words from our wordlist
 	#$self->_prune_boring_words() if $self->{prune_boring};
 	
-	# Create the image object
-	my $gd = GD::Image->newTrueColor(800, 600);
+	# Create the image object 
+	#my $gd = GD::Image->newTrueColor(800, 600); # Doing truecolor borks the background, it defaults to black.
+	my $gd = GD::Image->new(800, 600);
 	
 	# Center coordinates of this iamge
 	my $center_x = $gd->width  / 2;
 	my $center_y = $gd->height / 2;
 	
-	my $gray  = $gd->colorAllocate(20, 20, 20); # background color
+	my $gray  = $gd->colorAllocate(40, 40, 40); # background color
 	my $white = $gd->colorAllocate(255, 255, 255);
 	my $black = $gd->colorAllocate(0, 0, 0);
 	
@@ -175,7 +177,7 @@ sub cloud {
 	}
 	
 	# make the background transparent and interlaced  
-	$gd->transparent($white);
+	#$gd->transparent($white);
   $gd->interlaced('true');
 	
 	# Array of GD::Text::Align objects that we will move around and then draw
@@ -271,30 +273,40 @@ sub cloud {
 				    
 				    #my ($b_x1, $b_y1, $b_x2, $b_y2) = ($this_x, $this_y + $text->get('height'), $this_x + $text->get('width'), $this_y);
 				    my ($b_x, $b_y) = ($this_x, $this_y); # Have to remove the height from the "y" coordinate because Collision::2D draws from the lower left
-				    my ($b_h, $b_w) = ($text->get('width'), $text->get('height'));
+				    my ($b_w, $b_h) = ($text->get('width'), $text->get('height'));
+				    
+				    #my @bb = $text->bounding_box($this_x, $this_y, 0);
+				    #my ($b_w, $b_h) = ($bb[0] + $bb[4], $bb[1] + $bb[5]);
 				    
 				    use Data::Dumper;
 				    #warn Dumper([ $a_x1, $a_y1, $a_x2, $a_y2, $b_x1, $b_y1, $b_x2, $b_y2 ]);
-				    warn Dumper([ $a_x, $a_y, $a_w, $a_h, $b_x, $b_y, $b_w, $b_h ]);
+				    warn Dumper({
+				    	 'A-x' => $a_x,
+				    	 'A-y' => $a_y,
+				    	 'A-w' => $a_w,
+				    	 'A-h' => $a_h,
+				    	 'B-x' => $b_x,
+				    	 'B-y' => $b_y,
+				    	 'B-w' => $b_w,
+				    	 'B-h' => $b_h
+				    });
 				    
 				    # Upper left to lower right
-				    if ($self->_detect_collision(
-				    	#$a_x1, $a_y1, $a_x2, $a_y2,
-				    	#$b_x1, $b_y1, $b_x2, $b_y2)) {
-				    	$a_x, $a_y, $a_w, $a_h,
-				    	$b_x, $b_y, $b_w, $b_h)) {
+				    if ($self->_detect_collision2(
+				    			$a_x, $a_y, $a_w, $a_h,
+				    			$b_x, $b_y, $b_w, $b_h)) {
 				    	
-				    	
-				    	$collision = 1;	
+				    	$collision = 1;
 				    	last;
 				    }
 				    else {
 				    	$collision = 0;
 				    }
 				}
+				last if $collision == 0;
 				
 				# TESTING:
-				if ($col_iter % 1 == 0) {
+				if ($col_iter % 10 == 0) {
 					my $hue = $col_iter;
 					while ($hue > 360) {
 						$hue = $hue - 360;
@@ -303,10 +315,9 @@ sub cloud {
 					my ($r,$g,$b) = $self->_hex2rgb( (Color::Scheme->new->from_hue($hue)->colors())[0] );
 					my $c = $gd->colorAllocate($r,$g,$b);
 					
-					
 					#$gd->filledRectangle($this_x, $this_y, $this_x + 10, $this_y + 10, $c);
 					#$gd->string(gdGiantFont, $this_x, $this_y, $col_iter, $c);
-					$gd->setPixel($this_x, $this_y, $c)
+					$gd->setPixel($this_x, $this_y, $c);
 					
 					#my @bo = $text->bounding_box($this_x, $this_y, 0);
 					#$self->_stroke_bbox($gd, $c, @bo);
@@ -315,20 +326,47 @@ sub cloud {
 				$col_iter++;
 				
 				# Move text
-				($this_x, $this_y) = $path->n_to_xy($col_iter * 500);
+				my $new_loc = 0;
+				while (! $new_loc) {
+					($this_x, $this_y) = map { int } $path->n_to_xy($col_iter * 100); # use 'int' because it returns fractional coordinates
+					
+					# ***Don't do this check right now
+					$new_loc = 1;
+					last;
+					
+					if ($this_x < 0 ||
+							$this_y < 0) {
+								
+							#warn "New coordinates outside of image";
+							$col_iter++;
+							last if $col_iter > 1000;
+							next;
+					}
+					else {
+							$new_loc = 1;
+					}
+				}
+				
 				$this_x += $center_x;
 				$this_y += $center_y;
+				
+				#last if $col_iter > 100;
 			}
+			
 			$x = $this_x;
 			$y = $this_y;
 		}
 		
 		my @bounding = $text->draw($x, $y, 0);
+		$gd->string(gdGiantFont, $x, $y, "here", $gd->colorClosest(255,0,0));
 		#push(@drawn_texts, $text);
 		
 		$self->_stroke_bbox($gd, undef, @bounding);
 		
-		my @rect = ($bounding[0], $bounding[1], $text->get('width'), $text->get('height'));
+		#my @rect = ($bounding[6], $bounding[7], $text->get('width'), $text->get('height'));
+		my @rect = ($bounding[6], $bounding[7], $bounding[6] + $bounding[2], $bounding[7] + $bounding[3]);
+		#my @rect = ($bounding[0], $bounding[1], $bounding[0] + $bounding[4], $bounding[1] + $bounding[5]);
+		
 		push(@bboxes, \@rect);
 		
 		$loop++;
@@ -540,28 +578,39 @@ sub _prune_stop_words {
 sub _detect_collision {
 	my $self = shift;
 	
-	# Top-left to bottom-right
 	my ($a_x1, $a_y1, $a_w, $a_h, $b_x1, $b_y1, $b_w, $b_h) = @_;
+	
+	#$a_x1 = $a_x1 - $a_w / 2;
+	#$a_y1 = $a_y1 + $a_h / 2;
+	#$b_x1 = $b_x1 - $b_w / 2;
+	#$b_y1 = $b_y1 + $b_h / 2;
 	
 	my $rect1 = hash2rect({x => $a_x1, y => $a_y1, w => $a_w, h => $a_h});
 	my $rect2 = hash2rect({x => $b_x1, y => $b_y1, w => $b_w, h => $b_h});
 	
-	return $rect1->intersect($rect2);
+	return intersection($rect1, $rect2);
 }
 sub _detect_collision2 {
 	my $self = shift;
 	
 	# Top-left to bottom-right
-	my ($a_x1, $a_y1, $a_x2, $a_y2) = @_;
-	my ($b_x1, $b_y1, $b_x2, $b_y2) = @_;
+	#my ($a_x1, $a_y1, $a_x2, $a_y2, $b_x1, $b_y1, $b_x2, $b_y2) = @_;
 	
-	# See if any of rect B's points are inside rect A
-	if ($a_x1 < $b_x2 && $a_x2 > $b_x1 &&
-	    $a_y1 < $b_y2 && $a_y2 > $b_y1) {
-	    return 0;	
+	my ($a_x, $a_y, $a_w, $a_h, $b_x, $b_y, $b_w, $b_h) = @_;
+	
+	#$a_y = $a_y + $a_h;
+	#$b_y = $b_y + $b_h;
+	#$a_x = $a_x - $a_w / 2;
+	#$b_x = $b_x - $b_w / 2;
+	
+	if (($a_x < $b_x + $b_w) 
+			&& ($a_y < $b_y + $b_h) 
+			&& ($a_x + $a_w > $b_x) 
+			&& ($a_y + $a_h > $b_y)) {
+	    return 1;
 	}
 	else {
-		return 1;
+		return 0;
 	}
 }
 
