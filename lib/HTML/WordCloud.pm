@@ -271,7 +271,8 @@ sub cloud {
 				    my ($a_x, $a_y, $a_w, $a_h) = @$b;
 				    
 				    #my ($b_x1, $b_y1, $b_x2, $b_y2) = ($this_x, $this_y + $text->get('height'), $this_x + $text->get('width'), $this_y);
-				    my ($b_x, $b_y) = ($this_x, $this_y); # Have to remove the height from the "y" coordinate because Collision::2D draws from the lower left
+				    #my ($b_x, $b_y) = ($this_x, $this_y); # Have to remove the height from the "y" coordinate because Collision::2D draws from the lower left
+				    my ($b_x, $b_y) = ( $text->bounding_box($this_x, $this_y) )[6,7];
 				    my ($b_w, $b_h) = ($text->get('width'), $text->get('height'));
 				    
 				    #my @bb = $text->bounding_box($this_x, $this_y, 0);
@@ -357,7 +358,7 @@ sub cloud {
 		}
 		
 		my @bounding = $text->draw($x, $y, 0);
-		$gd->string(gdGiantFont, $x, $y, "here", $gd->colorClosest(255,0,0));
+		#$gd->string(gdGiantFont, $x, $y, "here", $gd->colorClosest(255,0,0));
 		#push(@drawn_texts, $text);
 		
 		$self->_stroke_bbox($gd, undef, @bounding);
