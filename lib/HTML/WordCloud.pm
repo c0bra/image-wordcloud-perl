@@ -183,7 +183,7 @@ sub cloud {
 	my @texts = ();
 	
 	# Max font size in points (40% of image height)
-	my $max_points = ($gd->height * 72 / 96) * .30;
+	my $max_points = ($gd->height * 72 / 96) * .25;
 	my $min_points = 8;
 	
 	# Scaling modifier for font sizes
