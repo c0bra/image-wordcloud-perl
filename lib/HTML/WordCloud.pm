@@ -6,7 +6,7 @@ use warnings;
 
 use Carp qw(carp croak confess);
 use Params::Validate qw(:all);
-use List::Util qw(sum);
+use List::Util qw(sum shuffle);
 use Data::Types qw(:int :float);
 use Search::Dict;
 use GD;
@@ -190,13 +190,21 @@ sub cloud {
 	my $max_count = $self->{max_count};
 	my $scaling = $max_points / $max_count;
 	
+	warn "MAX: $max_points";
+	warn "SCALING: $scaling";
+	
 	# For each word we have
 	my @areas = ();
 	#my @drawn_texts = ();
 	my @bboxes = ();
 	my $loop = 1;
-	foreach my $word (sort { $self->{words}->{$b} <=> $self->{words}->{$a} } keys %{ $self->{words} } ) {
-	#foreach my $word (keys %{ $self->{words} } ) {
+	
+	my @word_keys = sort { $self->{words}->{$b} <=> $self->{words}->{$a} } keys %{ $self->{words} };
+	
+	my $sloop = 0;
+	my %word_sizes = map { $sloop++; $_ => (1.75 / $sloop * $max_points) } @word_keys;
+	
+	foreach my $word ( shift @word_keys, shuffle @word_keys ) {
 		my $count = $self->{words}->{$word};
 		
 		my $text = new GD::Text::Align($gd);
@@ -209,9 +217,17 @@ sub cloud {
 		my $font = $font_path . $fonts[ rand @fonts ];
 			unless (-f $font) { carp "Font file '$font' not found"; }
 		
+		
+		my $size = $word_sizes{ $word };
 		#my $size = $count * $scaling;
+		#my $size = log2($count) * ($self->{word_count} / log2($self->{word_count}));
+		#my $size = exp2($count) * ($max_count / exp2($max_count));
+		
 		#my $size = ($loop / ($count / $max_count)) * $max_points;
-		my $size = (1.75 / $loop) * $max_points;
+		#my $size = (1.75 / $loop) * $max_points;
+		#print "BLAH: " . join(', ', $count, $max_points, $min_points) . "\n";
+		#my $size = $self->_normalize_num($count, $max_points, $min_points);
+		#print "SIZE: $size\n";
 		
 		# ***TODO: font scaling needs to be based on word frequency, not loop iteration
 		
@@ -317,12 +333,14 @@ sub cloud {
 					$new_loc = 1;
 					last;
 					
-					if ($this_x < 0 ||
-							$this_y < 0) {
+					my ($newx, $newy, $newx2, $newy2) = ( $text->bounding_box($this_x, $this_y) )[6,7,2,3];
+					
+					if ($newx < 0 || $newx2 > $gd->width ||
+							$newy < 0 || $newy2 > $gd->height) {
 								
-							#warn "New coordinates outside of image";
+							warn "New coordinates outside of image";
 							$col_iter++;
-							last if $col_iter > 1000;
+							last if $col_iter > 10_000;
 							next;
 					}
 					else {
@@ -356,6 +374,23 @@ sub cloud {
 	
 	# Return the image as PNG content
 	return $gd;
+}
+
+sub exp2 {
+	my $n = shift;
+	return exp($n) / exp(2);
+}
+
+sub log2 {
+	my $n = shift;
+	return log($n) / log(2);
+}
+
+sub _normalize_num {
+	my $self = shift;
+	my ($num, $max, $min) = @_;
+	
+	return ($num - $min) / ($max - $min);
 }
 
 =head2 _random_palette($color_count, [$saturation, $value])
