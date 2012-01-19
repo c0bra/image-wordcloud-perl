@@ -13,6 +13,7 @@ use GD;
 use GD::Text::Align;
 use Color::Scheme;
 use Math::PlanePath::TheodorusSpiral;
+use Math::Fibonacci;
 use Collision::2D qw(:all);
 
 our $golden_ratio_conjugate = 0.618033988749895;
@@ -63,18 +64,34 @@ sub new {
     my $proto = shift;
 
     my %opts = validate(@_, {
-        word_count   => { type => SCALAR, optional => 1 },
-        prune_boring => { type => SCALAR, optional => 1, default => 1 },
+        word_count     => { type => SCALAR, optional => 1 },
+        prune_boring   => { type => SCALAR, optional => 1, default => 1 },
+        font_file      => { type => SCALAR, optional => 1 },
+        stop_word_file => { type => SCALAR, optional => 1, default => $stop_word_dict_file },
     });
     
     # ***TODO: Figure out how many words to use based on image size?
-    $opts{word_count} ||= 30;
-
+    $opts{'word_count'} ||= 30;
+		
+		if ($opts{'font_file'}) {
+			unless (-f $opts{'font_file'}) {
+				carp sprintf "Font file '%s' not found", $opts{'font_file'};
+			}
+		}
+		
+		if ($opts{'stop_word_file'}) {
+			unless (-f $opts{'stop_word_file'}) {
+				carp sprintf "Stop word file '%s' not found", $opts{'stop_word_file'};
+			}
+		}
+		
     my $class = ref( $proto ) || $proto;
     my $self = { #Will need to allow for params passed to constructor
-			words        => {},
-      word_count   => $opts{word_count},
-      prune_boring => $opts{prune_boring},
+			words          => {},
+      word_count     => $opts{'word_count'},
+      prune_boring   => $opts{'prune_boring'},
+      font_file      => $opts{'font_file'},
+      stop_word_file => $opts{'stop_word_file'},
     };
     bless($self, $class);
 
@@ -140,7 +157,7 @@ sub words {
 
 =head2 cloud()
 
-Make the word cloud! Returns an image file location
+Make the word cloud! Returns a GD image object
 
 =cut
 
@@ -190,9 +207,6 @@ sub cloud {
 	my $max_count = $self->{max_count};
 	my $scaling = $max_points / $max_count;
 	
-	warn "MAX: $max_points";
-	warn "SCALING: $scaling";
-	
 	# For each word we have
 	my @areas = ();
 	#my @drawn_texts = ();
@@ -201,6 +215,26 @@ sub cloud {
 	
 	my @word_keys = sort { $self->{words}->{$b} <=> $self->{words}->{$a} } keys %{ $self->{words} };
 	
+	# Get the font size for each word using the Fibonacci sequence
+#	my %word_sizes = ();
+#	my $sloop = 0;
+#	my $fib_counter = 1;
+#	my $cur_size;
+#	foreach my $word (@word_keys) {
+#		if ($sloop == 0) {
+#			my $term = Math::Fibonacci::term($fib_counter);
+#			
+#			$cur_size = (1 / $fib_counter * $max_points);
+#			
+#			$sloop = $term;
+#			
+#			$fib_counter++;
+#		}
+#		
+#		$word_sizes{ $word } = $cur_size;
+#		
+#		$sloop--;
+#	}
 	my $sloop = 0;
 	my %word_sizes = map { $sloop++; $_ => (1.75 / $sloop * $max_points) } @word_keys;
 	
@@ -213,12 +247,19 @@ sub cloud {
 		my $color = $palette[ rand @palette ];
 		$text->set(color => $color);
 		
-		# Use a random font
-		my $font = $font_path . $fonts[ rand @fonts ];
-			unless (-f $font) { carp "Font file '$font' not found"; }
-		
+		# Either use the specified font file...
+		my $font = "";
+		if ($self->{'font_file'}) {
+			$font = $self->{'font_file'};
+		}
+		# ...or use a random font
+		else {
+			$font = $font_path . $fonts[ rand @fonts ];
+				unless (-f $font) { carp "Font file '$font' not found"; }
+		}
 		
 		my $size = $word_sizes{ $word };
+		
 		#my $size = $count * $scaling;
 		#my $size = log2($count) * ($self->{word_count} / log2($self->{word_count}));
 		#my $size = exp2($count) * ($max_count / exp2($max_count));
@@ -338,10 +379,9 @@ sub cloud {
 					if ($newx < 0 || $newx2 > $gd->width ||
 							$newy < 0 || $newy2 > $gd->height) {
 								
-							warn "New coordinates outside of image";
+							carp "New coordinates outside of image";
 							$col_iter++;
 							last if $col_iter > 10_000;
-							next;
 					}
 					else {
 							$new_loc = 1;
@@ -551,7 +591,7 @@ sub _prune_stop_words {
 	}
 	
 	# Read in the stop word file if we haven't already
-	if (! $self->{stop_words}) { $self->_read_stop_file(); }
+	if (! $self->{read_stop_file}) { $self->_read_stop_file(); }
 	
 	foreach my $word (keys %$words) {
 			delete $words->{$word} if exists $self->{stop_words}->{ $word };
@@ -561,20 +601,35 @@ sub _prune_stop_words {
 sub _read_stop_file {
 	my $self = shift;
 	
-	if (! -f $stop_word_dict_file) {
-		carp "Stop word file '$stop_word_dict_file' not found, not pruning any words";
+	my $stop_word_file = $self->{'stop_word_file'};
+	if (! -f $stop_word_file) {
+		carp "Stop word file '$stop_word_file' not found, not pruning any words";
 		return;
 	}
 	
-	$self->{stop_words} = {};
+	#$self->{stop_words} = {};
 	
-	open(my $dict, '<', $stop_word_dict_file);
+	open(my $dict, '<', $stop_word_file);
 	while (my $line = <$dict>) {
 		chomp $line;
 		$self->{stop_words}->{ $line } = 1;
 	}
 	close($dict);
 	
+	$self->{'read_stop_file'} = 1;
+	
+	return 1;
+}
+
+# Add new stop words onto our list
+sub add_stop_words {
+	my $self = shift;
+	my @words = @_;
+	
+	foreach my $word (@words) {
+		$self->{stop_words}->{ lc($word) } = 1;
+	}
+		
 	return 1;
 }
 
