@@ -13,8 +13,7 @@ use GD;
 use GD::Text::Align;
 use Color::Scheme;
 use Math::PlanePath::TheodorusSpiral;
-use Math::Fibonacci;
-use Collision::2D qw(:all);
+#use Math::Fibonacci;
 
 our $golden_ratio_conjugate = 0.618033988749895;
 
