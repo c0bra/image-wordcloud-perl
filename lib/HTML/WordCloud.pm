@@ -200,7 +200,7 @@ sub cloud {
 	my @texts = ();
 	
 	# Max font size in points (40% of image height)
-	my $max_points = ($gd->height * 72 / 96) * .25;
+	my $max_points = ($gd->height * 72 / 96) * .25; # Convert height in pixels to points, then take 25% of that number
 	my $min_points = 8;
 	
 	# Scaling modifier for font sizes
@@ -261,16 +261,7 @@ sub cloud {
 		my $size = $word_sizes{ $word };
 		
 		#my $size = $count * $scaling;
-		#my $size = log2($count) * ($self->{word_count} / log2($self->{word_count}));
-		#my $size = exp2($count) * ($max_count / exp2($max_count));
-		
-		#my $size = ($loop / ($count / $max_count)) * $max_points;
 		#my $size = (1.75 / $loop) * $max_points;
-		#print "BLAH: " . join(', ', $count, $max_points, $min_points) . "\n";
-		#my $size = $self->_normalize_num($count, $max_points, $min_points);
-		#print "SIZE: $size\n";
-		
-		# ***TODO: font scaling needs to be based on word frequency, not loop iteration
 		
 		$size = $max_points if $size > $max_points;
 		$size = $min_points if $size < $min_points;
@@ -293,6 +284,10 @@ sub cloud {
 		if ($loop == 1) {
 			$x = $center_x - ($w / 2);
 			$y = $center_y + ($h / 4); # I haven't done the math see why dividing the height by 4 works, but it does
+			
+			# Move the image center around a little
+			$x += $self->_random_int_between($gd->width * .1 * -1, $gd->width * .1 );
+			$y += $self->_random_int_between($gd->height * .1 * -1, $gd->height * .1);
 		}
 		else {
 			# Get a random place to draw the text
@@ -312,9 +307,14 @@ sub cloud {
 			# Make a spiral, TODO: probably need to somehow constrain or filter points that are generated outside the image dimensions
 			my $path = Math::PlanePath::TheodorusSpiral->new;
 			
-			my ($this_x, $this_y) = $path->n_to_xy(1);
-			$this_x += $center_x;
-			$this_y += $center_y;
+			# Get the initial starting point
+			my ($rand_bound_w, $rand_bound_h) = @{$bboxes[0]}[2,3];
+			#my ($this_x, $this_y) = $path->n_to_xy(1);
+			my ($this_x, $this_y) = $self->_new_coordinates($gd, $path, 1, $rand_bound_w, $rand_bound_h);
+			
+			# Put the spiral in the center of the image
+			#$this_x += $center_x;
+		  #$this_y += $center_y;
 			
 			my $collision = 1;
 			my $col_iter = 1;
@@ -351,8 +351,8 @@ sub cloud {
 						$hue = $hue - 360;
 					}
 					
-					my ($r,$g,$b) = $self->_hex2rgb( (Color::Scheme->new->from_hue($hue)->colors())[0] );
-					my $c = $gd->colorAllocate($r,$g,$b);
+					#my ($r,$g,$b) = $self->_hex2rgb( (Color::Scheme->new->from_hue($hue)->colors())[0] );
+					#my $c = $gd->colorAllocate($r,$g,$b);
 					
 					#$gd->filledRectangle($this_x, $this_y, $this_x + 10, $this_y + 10, $c);
 					#$gd->string(gdGiantFont, $this_x, $this_y, $col_iter, $c);
@@ -366,20 +366,20 @@ sub cloud {
 				$col_iter++;
 				
 				# Move text
-				my $new_loc = 0;
+				my $new_loc  = 0;
 				while (! $new_loc) {
-					($this_x, $this_y) = map { int } $path->n_to_xy($col_iter * 100); # use 'int' because it returns fractional coordinates
+					($this_x, $this_y) = $self->_new_coordinates($gd, $path, $col_iter, $rand_bound_w, $rand_bound_h);
 					
 					# ***Don't do this check right now
-					$new_loc = 1;
-					last;
+					#$new_loc = 1;
+					#last;
 					
 					my ($newx, $newy, $newx2, $newy2) = ( $text->bounding_box($this_x, $this_y) )[6,7,2,3];
 					
 					if ($newx < 0 || $newx2 > $gd->width ||
 							$newy < 0 || $newy2 > $gd->height) {
 								
-							carp "New coordinates outside of image";
+							#carp sprintf "New coordinates outside of image: (%s, %s), (%s, %s)", $newx, $newy, $newx2, $newy2;
 							$col_iter++;
 							last if $col_iter > 10_000;
 					}
@@ -393,8 +393,10 @@ sub cloud {
 				#$this_y -= $text->get('height') / 2;
 				
 				# Center the spiral
-				$this_x += $center_x;
-				$this_y += $center_y;
+				#if (! $centered) {
+				#	$this_x += $center_x;
+				#	$this_y += $center_y;
+				#}
 			}
 			
 			$x = $this_x;
@@ -414,6 +416,24 @@ sub cloud {
 	
 	# Return the image as PNG content
 	return $gd;
+}
+
+# Return new coordinates ($x, $y) that are no more than $bound_x or $bound_y digits away from the center of GD image $gd
+sub _new_coordinates {
+	my $self = shift;
+	
+	my ($gd, $path, $iteration, $bound_x, $bound_y) = @_;
+	
+	my ($x, $y) = map { int } $path->n_to_xy($iteration * 100); # use 'int' because it returns fractional coordinates
+					
+	# Move the center of this word within 50% of the area of the first word's bounding box
+	$x += $self->_random_int_between($bound_x * -1 * .25, $bound_x * .25);
+	$y += $self->_random_int_between($bound_y * -1 * .25, $bound_y * .25);
+					
+	$x += $gd->width;
+	$y += $gd->height;
+	
+	return ($x, $y);
 }
 
 sub exp2 {
