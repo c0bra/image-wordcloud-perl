@@ -25,5 +25,5 @@ binmode STDOUT;
 for (1 .. 12) {
 	my $img = $wc->cloud();
 
-	write_file('/www/vhosts/c0bra.net/htdocs/wordcloud/moby' . $_ . '.png', {binmode => ':raw'}, $img->png);
+	write_file('/www/vhosts/c0bra.net/htdocs/wordcloud/moby/moby' . $_ . '.png', {binmode => ':raw'}, $img->png);
 }
