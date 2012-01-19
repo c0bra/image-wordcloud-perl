@@ -430,8 +430,8 @@ sub _new_coordinates {
 	$x += $self->_random_int_between($bound_x * -1 * .25, $bound_x * .25);
 	$y += $self->_random_int_between($bound_y * -1 * .25, $bound_y * .25);
 					
-	$x += $gd->width;
-	$y += $gd->height;
+	$x += $gd->width / 2;
+	$y += $gd->height / 2;
 	
 	return ($x, $y);
 }
