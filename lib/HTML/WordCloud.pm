@@ -63,10 +63,11 @@ sub new {
     my $proto = shift;
 
     my %opts = validate(@_, {
-        word_count     => { type => SCALAR, optional => 1 },
-        prune_boring   => { type => SCALAR, optional => 1, default => 1 },
-        font_file      => { type => SCALAR, optional => 1 },
-        stop_word_file => { type => SCALAR, optional => 1, default => $stop_word_dict_file },
+    	  image_size     => { type => ARRAYREF, optional => 1, default => [800, 600] },
+        word_count     => { type => SCALAR,   optional => 1 },
+        prune_boring   => { type => SCALAR,   optional => 1, default => 1 },
+        font_file      => { type => SCALAR,   optional => 1 },
+        stop_word_file => { type => SCALAR,   optional => 1, default => $stop_word_dict_file },
     });
     
     # ***TODO: Figure out how many words to use based on image size?
@@ -87,6 +88,7 @@ sub new {
     my $class = ref( $proto ) || $proto;
     my $self = { #Will need to allow for params passed to constructor
 			words          => {},
+			image_size     => $opts{'image_size'},
       word_count     => $opts{'word_count'},
       prune_boring   => $opts{'prune_boring'},
       font_file      => $opts{'font_file'},
@@ -168,7 +170,7 @@ sub cloud {
 	
 	# Create the image object 
 	#my $gd = GD::Image->newTrueColor(800, 600); # Doing truecolor borks the background, it defaults to black.
-	my $gd = GD::Image->new(800, 600);
+	my $gd = GD::Image->new($self->{image_size}->[0], $self->{image_size}->[1]);
 	
 	# Center coordinates of this iamge
 	my $center_x = $gd->width  / 2;
@@ -200,7 +202,7 @@ sub cloud {
 	
 	# Max font size in points (40% of image height)
 	my $max_points = ($gd->height * 72 / 96) * .25; # Convert height in pixels to points, then take 25% of that number
-	my $min_points = 8;
+	my $min_points = ($gd->height * 72 / 96) * 0.0175; # 0.02625; 
 	
 	# Scaling modifier for font sizes
 	my $max_count = $self->{max_count};
