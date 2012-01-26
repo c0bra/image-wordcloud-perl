@@ -332,7 +332,7 @@ sub cloud {
 				    my ($a_x, $a_y, $a_w, $a_h) = @$b;
 				    
 				    # Upper left to lower right
-				    if ($self->_detect_collision2(
+				    if ($self->_detect_collision(
 				    			$a_x, $a_y, $a_w, $a_h,
 				    			$b_x, $b_y, $b_w, $b_h)) {
 				    	
@@ -659,37 +659,12 @@ sub add_stop_words {
 	return 1;
 }
 
-# Detect a collision between two rectangles
-#	Returns 1 on a collision and 0 on a miss
 sub _detect_collision {
-	my $self = shift;
-	
-	my ($a_x1, $a_y1, $a_w, $a_h, $b_x1, $b_y1, $b_w, $b_h) = @_;
-	
-	#$a_x1 = $a_x1 - $a_w / 2;
-	#$a_y1 = $a_y1 + $a_h / 2;
-	#$b_x1 = $b_x1 - $b_w / 2;
-	#$b_y1 = $b_y1 + $b_h / 2;
-	
-	my $rect1 = hash2rect({x => $a_x1, y => $a_y1, w => $a_w, h => $a_h});
-	my $rect2 = hash2rect({x => $b_x1, y => $b_y1, w => $b_w, h => $b_h});
-	
-	return intersection($rect1, $rect2);
-}
-sub _detect_collision2 {
 	my $self = shift;
 	
 	my ($a_x, $a_y, $a_w, $a_h, $b_x, $b_y, $b_w, $b_h) = @_;
 	
-#	if (($a_x < $b_x + $b_w) 
-#			&& ($a_y < $b_y + $b_h) 
-#			&& ($a_x + $a_w > $b_x) 
-#			&& ($a_y + $a_h > $b_y)) {
-#	    return 1;
-#	}
 	if (
-		#(! ($b_x > $a_x + $a_w) || ($b_x + $b_w < $a_x) ) &&
-		#(! ($b_y > $a_y + $a_h) || ($b_y + $b_h < $a_y) )) {
 		!( ($b_x > $a_x + $a_w) || ($b_x + $b_w < $a_x) ||
 		   ($b_y > $a_y + $a_h) || ($b_y + $b_h < $a_y) )) {
 		
