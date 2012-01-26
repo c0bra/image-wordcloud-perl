@@ -3,7 +3,7 @@
 use strict;
 use warnings;
 
-use HTML::WordCloud;
+use Image::WordCloud;
 use File::Slurp;
 use Data::Dumper;
 
@@ -14,7 +14,7 @@ my @words = split /\s+/, $moby;
 
 #my %wordhash = map { shift @words => $_ } (1 .. ($#words+1));
 
-my $wc = new HTML::WordCloud(
+my $wc = new Image::WordCloud(
 	image_size => [600,600],
 	word_count => 100
 );
