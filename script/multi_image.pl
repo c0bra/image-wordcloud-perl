@@ -14,7 +14,10 @@ my @words = split /\s+/, $moby;
 
 #my %wordhash = map { shift @words => $_ } (1 .. ($#words+1));
 
-my $wc = new HTML::WordCloud(prune_boring => 1, word_count => 70);
+my $wc = new HTML::WordCloud(
+	image_size => [600,600],
+	word_count => 100
+);
 
 $wc->words(\@words);
 
