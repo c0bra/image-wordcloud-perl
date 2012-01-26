@@ -1,15 +1,10 @@
 #!perl -T
 
-use Test::More tests => 2;
+use Test::More tests => 1;
 use Test::Exception;
+use Image::WordCloud;
 
-BEGIN {
-    use_ok( 'HTML::WordCloud' ) || print "Bail out!\n";
-}
-
-diag( "Testing HTML::WordCloud $HTML::WordCloud::VERSION, Perl $], $^X" );
-
-my $wc = new HTML::WordCloud();
+my $wc = new Image::WordCloud();
 
 # Add some words
 my @words = qw/this is a bunch of words and some are pretty worthless/; # 11 words

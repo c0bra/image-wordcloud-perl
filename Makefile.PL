@@ -1,7 +1,7 @@
 use inc::Module::Install;
 
-name     'HTML-WordCloud';
-all_from 'lib/HTML/WordCloud.pm';
+name     'Image-WordCloud';
+all_from 'lib/Image/WordCloud.pm';
 author   q{Brian Hann <brian.hann@gmail.com>};
 license  'perl';
 
@@ -15,6 +15,8 @@ requires 'GD';
 requires 'GD::Text::Align';
 requires 'Color::Scheme';
 requires 'Math::PlanePath::TheodorusSpiral';
+
+install_share;
 
 auto_install;
 

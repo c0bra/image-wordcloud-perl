@@ -1,17 +1,12 @@
 #!perl -T
 
 use strict;
-use Test::More tests => 11;
+use Test::More tests => 10;
 use Test::Exception;
-
-BEGIN {
-    use_ok( 'HTML::WordCloud' ) || print "Bail out!\n";
-}
-
-diag( "Testing HTML::WordCloud $HTML::WordCloud::VERSION, Perl $], $^X" );
+use Image::WordCloud;
 
 # Don't prune boring words for this test
-my $wc = new HTML::WordCloud(prune_boring => 0);
+my $wc = new Image::WordCloud(prune_boring => 0);
 
 my @words = qw/this is a bunch of words/;
 my %wordhash = map { shift @words => $_ } (1 .. ($#words+1));
@@ -19,7 +14,7 @@ my %wordhash = map { shift @words => $_ } (1 .. ($#words+1));
 is(scalar keys(%wordhash), 6, 'Starting with right number of words');
 
 $wc->words(\%wordhash);
-is(scalar keys (%{$wc->{words}}), 6, 'Got right number of words from hash element');
+is(scalar keys (%{$wc->{words}}), 6, 'Got right number of words directly from WordCloud object');
 
 my $get_words = $wc->words();
 is(scalar keys %wordhash, scalar keys %$get_words, 'Got right number of words with ->words() method');
@@ -29,8 +24,7 @@ is($wc->{words}->{'words'}, 6, 'Right count for last word in list');
 
 # ***TODO: test adding words as an arrayref
 
-
-$wc = new HTML::WordCloud(word_count => 2);
+$wc = new Image::WordCloud(prune_boring => 0, word_count => 2);
 
 $wc->words(\%wordhash);
 

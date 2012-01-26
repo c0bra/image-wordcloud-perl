@@ -1,16 +1,12 @@
 #!perl -T
 
-use Test::More tests => 10;
+use Test::More tests => 9;
 use Test::Exception;
+use Image::WordCloud;
 
-BEGIN {
-    use_ok( 'HTML::WordCloud' ) || print "Bail out!\n";
-}
 
-diag( "Testing HTML::WordCloud $HTML::WordCloud::VERSION, Perl $], $^X" );
-
-my $wc = new HTML::WordCloud;
-isa_ok( $wc, 'HTML::WordCloud' );
+my $wc = new Image::WordCloud;
+isa_ok( $wc, 'Image::WordCloud' );
 
 dies_ok( sub { my $colors = $wc->random_palette(); }, "Dies when no 'count' is provided");
 

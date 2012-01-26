@@ -1,4 +1,4 @@
-package HTML::WordCloud;
+package Image::WordCloud;
 
 use 5.006;
 use strict;
@@ -31,7 +31,7 @@ our @fonts = qw(
 
 =head1 NAME
 
-HTML::WordCloud - The great new HTML::WordCloud!
+Image::WordCloud - The great new Image::WordCloud!
 
 =head1 VERSION
 
@@ -48,9 +48,9 @@ Quick summary of what the module does.
 
 Perhaps a little code snippet.
 
-    use HTML::WordCloud;
+    use Image::WordCloud;
 
-    my $wc = HTML::WordCloud->new();
+    my $wc = Image::WordCloud->new();
     ...
 
 =head1 SUBROUTINES/METHODS
@@ -131,7 +131,7 @@ sub words {
   # Blank out the current word list;
   $self->{words} = {};
   
-  $self->_prune_stop_words(\%words);
+  $self->_prune_stop_words(\%words) if $self->{prune_boring};
   
   # Sort the words by count and let N number of words through, based on $self->{word_count}
   my $word_count = 1;
@@ -437,12 +437,12 @@ sub _new_coordinates {
 	return ($x, $y);
 }
 
-sub exp2 {
+sub _exp2 {
 	my $n = shift;
 	return exp($n) / exp(2);
 }
 
-sub log2 {
+sub _log2 {
 	my $n = shift;
 	return log($n) / log(2);
 }
@@ -642,7 +642,12 @@ sub _read_stop_file {
 	return 1;
 }
 
-# Add new stop words onto our list
+=head2 add_stop_words(@words)
+
+Add new stop words onto the list.
+
+=cut
+
 sub add_stop_words {
 	my $self = shift;
 	my @words = @_;
@@ -727,7 +732,7 @@ Brian Hann, C<< <brian.hann at gmail.com> >>
 =head1 BUGS
 
 Please report any bugs or feature requests to C<bug-html-wordcloud at rt.cpan.org>, or through
-the web interface at L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=HTML-WordCloud>.  I will be notified, and then you'll
+the web interface at L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Image-WordCloud>.  I will be notified, and then you'll
 automatically be notified of progress on your bug as I make changes.
 
 
@@ -737,7 +742,7 @@ automatically be notified of progress on your bug as I make changes.
 
 You can find documentation for this module with the perldoc command.
 
-    perldoc HTML::WordCloud
+    perldoc Image::WordCloud
 
 
 You can also look for information at:
@@ -746,19 +751,19 @@ You can also look for information at:
 
 =item * RT: CPAN's request tracker (report bugs here)
 
-L<http://rt.cpan.org/NoAuth/Bugs.html?Dist=HTML-WordCloud>
+L<http://rt.cpan.org/NoAuth/Bugs.html?Dist=Image-WordCloud>
 
 =item * AnnoCPAN: Annotated CPAN documentation
 
-L<http://annocpan.org/dist/HTML-WordCloud>
+L<http://annocpan.org/dist/Image-WordCloud>
 
 =item * CPAN Ratings
 
-L<http://cpanratings.perl.org/d/HTML-WordCloud>
+L<http://cpanratings.perl.org/d/Image-WordCloud>
 
 =item * Search CPAN
 
-L<http://search.cpan.org/dist/HTML-WordCloud/>
+L<http://search.cpan.org/dist/Image-WordCloud/>
 
 =back
 
@@ -779,4 +784,4 @@ See http://dev.perl.org/licenses/ for more information.
 
 =cut
 
-1; # End of HTML::WordCloud
+1; # End of Image::WordCloud
