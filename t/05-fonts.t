@@ -2,7 +2,7 @@
 
 use Test::More tests => 4;
 use File::Spec;
-use File::Find;
+use File::Find::Rule;
 use Image::WordCloud;
 
 my $wc = new Image::WordCloud();
@@ -15,12 +15,15 @@ diag('Found ' . $num_fonts . ' fonts to use');
 my $font_dir = File::Spec->catdir('.', 'share', 'fonts');
 ok(-d $font_dir, 			"Found font directory in dist") or diag("Font directory '$font_dir' not found");
 
-my $font_file = "";
-find({ wanted => \&fonts_wanted, no_chdir => 1 }, $font_dir);
-sub fonts_wanted {
-	$font_file = $File::Find::name;
-}
-ok(-f $font_file,			"Found a font file in the font directory");
+use Data::Dumper; 
+my $rule = File::Find::Rule->new();
+$rule->file()->name('*.ttf');
+my @font_files = $rule->in($font_dir)->extras({ no_chdir => 1});
+
+#use Data::Dumper; diag("Font files: " . Dumper(\@font_files));
+
+my $font_file = $font_files[0];
+ok(-f $font_file,			"Found a font file in the font directory") or diag("Returned font file: '$font_file'");
 
 my $wc = new Image::WordCloud(font_file => $font_file);
 

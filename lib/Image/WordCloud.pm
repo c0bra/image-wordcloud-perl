@@ -54,13 +54,13 @@ sub new {
     my $proto = shift;
 
     my %opts = validate(@_, {
-    	  image_size     => { type => ARRAYREF, optional => 1, default => [800, 600] },
-        word_count     => { type => SCALAR,   optional => 1 },
-        prune_boring   => { type => SCALAR,   optional => 1, default => 1 },
-        font           => { type => SCALAR,   optional => 1 },
-        font_file      => { type => SCALAR,   optional => 1 },
-        font_path      => { type => SCALAR,   optional => 1 },
-        stop_word_file => { type => SCALAR,   optional => 1, default => $stop_word_dict_file },
+    	  image_size     => { type => ARRAYREF | UNDEF, optional => 1, default => [800, 600] },
+        word_count     => { type => SCALAR | UNDEF,   optional => 1 },
+        prune_boring   => { type => SCALAR | UNDEF,   optional => 1, default => 1 },
+        font           => { type => SCALAR | UNDEF,   optional => 1 },
+        font_file      => { type => SCALAR | UNDEF,   optional => 1 },
+        font_path      => { type => SCALAR | UNDEF,   optional => 1 },
+        stop_word_file => { type => SCALAR | UNDEF,   optional => 1, default => $stop_word_dict_file },
     });
     
     # ***TODO: Figure out how many words to use based on image size?
