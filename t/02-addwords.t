@@ -32,8 +32,8 @@ is(scalar keys (%{$wc->{words}}), 2, "Got right number of words with 'word_count
 
 my @wordkeys = sort { $wc->{words}->{$b} <=> $wc->{words}->{$a} } keys %{$wc->{words}};
 
-is(@wordkeys[0], 'words', 'Sorting and pruning words right - first word');
-is(@wordkeys[1], 'of',    'Sorting and pruning words right - second word');
+is($wordkeys[0], 'words', 'Sorting and pruning words right - first word');
+is($wordkeys[1], 'of',    'Sorting and pruning words right - second word');
 
 is($wc->{words}->{'words'}, 6, 'Right count for top word in list');
 is($wc->{words}->{'of'},    5, 'Right count for next word in list');
