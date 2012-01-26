@@ -18,17 +18,7 @@ use Math::PlanePath::TheodorusSpiral;
 
 our $golden_ratio_conjugate = 0.618033988749895;
 
-our $font_path = "./share/fonts/";
-
-our $boring_word_dict_file = "./share/pos/part-of-speech.txt";
 our $stop_word_dict_file = "./share/pos/stop_words.txt";
-
-# GeosansLight.ttf
-# GeosansLight-Oblique.ttf
-# AveriaSerif-Bold.ttf
-our @fonts = qw(
-	AveriaSerif-Regular.ttf
-);
 
 =head1 NAME
 
@@ -67,6 +57,7 @@ sub new {
     	  image_size     => { type => ARRAYREF, optional => 1, default => [800, 600] },
         word_count     => { type => SCALAR,   optional => 1 },
         prune_boring   => { type => SCALAR,   optional => 1, default => 1 },
+        font           => { type => SCALAR,   optional => 1 },
         font_file      => { type => SCALAR,   optional => 1 },
         font_path      => { type => SCALAR,   optional => 1 },
         stop_word_file => { type => SCALAR,   optional => 1, default => $stop_word_dict_file },
@@ -125,6 +116,7 @@ sub new {
 			image_size     => $opts{'image_size'},
       word_count     => $opts{'word_count'},
       prune_boring   => $opts{'prune_boring'},
+      font           => $opts{'font'}      || "",
       font_path      => $opts{'font_path'} || "",
       font_file      => $opts{'font_file'} || "",
       stop_word_file => $opts{'stop_word_file'},
@@ -142,8 +134,7 @@ sub new {
 		# Otherwise if no font_file was specified and we have a font path, read in all the fonts from font_path
 		elsif (! -f $self->{'font_file'} && -d $self->{'font_path'}) {
 			opendir(my $fd, $self->{'font_path'})
-				# ***TODO add grep for font extensions here?
-				my @fonts = map { File::Spec->catfile($self->{'font_path'}, $_) } readdir($fd);
+				my @fonts = map { File::Spec->catfile($self->{'font_path'}, $_) } grep { /\.ttf$/ }  readdir($fd);
 			closedir($fd);
 			$self->{fonts} = \@fonts;
 		}
@@ -224,6 +215,11 @@ Make the word cloud! Returns a GD image object
 sub cloud {
 	my $self = shift;
 	
+	# Set the font path for GD::Text::* objects, if we have one to use
+	if (-d $self->{'font_path'}) {
+		GD::Text->font_path( $self->{'font_path'} );
+	}
+	
 	# Create the image object 
 	my $gd = GD::Image->new($self->{image_size}->[0], $self->{image_size}->[1]); # Adding the 3rd argument (for truecolor) borks the background, it defaults to black.
 	
@@ -231,7 +227,7 @@ sub cloud {
 	my $center_x = $gd->width  / 2;
 	my $center_y = $gd->height / 2;
 	
-	my $gray  = $gd->colorAllocate(40, 40, 40); # background color
+	my $gray  = $gd->colorAllocate(40, 40, 40); # background color, gray
 	my $white = $gd->colorAllocate(255, 255, 255);
 	my $black = $gd->colorAllocate(0, 0, 0);
 	
@@ -247,14 +243,13 @@ sub cloud {
 		push @palette, $newc;
 	}
 	
-	# make the background transparent and interlaced  
-	#$gd->transparent($white);
+	# make the background interlaced  
   $gd->interlaced('true');
 	
 	# Array of GD::Text::Align objects that we will move around and then draw
 	my @texts = ();
 	
-	# Max font size in points (40% of image height)
+	# Max font size in points (25% of image height)
 	my $max_points = ($gd->height * 72 / 96) * .25; # Convert height in pixels to points, then take 25% of that number
 	my $min_points = ($gd->height * 72 / 96) * 0.0175; # 0.02625; 
 	
@@ -307,9 +302,13 @@ sub cloud {
 		if ($self->{'font_file'}) {
 			$font = $self->{'font_file'};
 		}
+		# Or the specified font
+		elsif ($self->{'font'} && -d $self->{'font_path'}) {
+			$font = $self->{'font'};
+		}
 		# ...or use a random font
-		else {
-			$font = $font_path . $fonts[ rand @fonts ];
+		elsif (scalar @{$self->{'fonts'}} > 0) {
+			$font = $self->{'fonts'}->[ rand @{$self->{'fonts'}} ];
 				unless (-f $font) { carp "Font file '$font' not found"; }
 		}
 		
