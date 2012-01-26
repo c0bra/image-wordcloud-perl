@@ -166,8 +166,7 @@ sub cloud {
 	my $self = shift;
 	
 	# Create the image object 
-	#my $gd = GD::Image->newTrueColor(800, 600); # Doing truecolor borks the background, it defaults to black.
-	my $gd = GD::Image->new($self->{image_size}->[0], $self->{image_size}->[1]);
+	my $gd = GD::Image->new($self->{image_size}->[0], $self->{image_size}->[1]); # Adding the 3rd argument (for truecolor) borks the background, it defaults to black.
 	
 	# Center coordinates of this iamge
 	my $center_x = $gd->width  / 2;
@@ -177,7 +176,6 @@ sub cloud {
 	my $white = $gd->colorAllocate(255, 255, 255);
 	my $black = $gd->colorAllocate(0, 0, 0);
 	
-	#my $rand_colors = $self->_random_palette(count => 10);
 	my @rand_colors = map { [$self->_hex2rgb($_)] } Color::Scheme->new
 		->from_hue(rand(355))
 		->scheme('analogic')
@@ -449,44 +447,6 @@ sub _normalize_num {
 	my ($num, $max, $min) = @_;
 	
 	return ($num - $min) / ($max - $min);
-}
-
-=head2 _random_palette($color_count, [$saturation, $value])
-
-Generate C<$color_count> number of RGB colors. C<$color_count> must be an integer. C<$saturation> and C<$value> are optional floating point values from 0.0 to 1.0.
-They default to 0.5 and 0.95 respectively.
-
-Return value: C<\@colors>
-
-=cut
-
-# Stolen from: http://martin.ankerl.com/2009/12/09/how-to-create-random-colors-programmatically/
-sub _random_palette {
-	my $self = shift;
-	
-	my %opts = validate(@_, {
-  	count			  => { type => SCALAR, optional => 0 },
-  	saturation  => { type => SCALAR, optional => 1, default => 0.5 },
-  	value       => { type => SCALAR, optional => 1, default => 0.95 },
-  });
-  
-  croak "\$count ($opts{count}) not an integer" 												unless is_int($opts{count});
-  croak "\$saturation ($opts{saturation}) not a floating point number"	unless is_float($opts{saturation});
-  croak "\$value ($opts{value}) Not a floating point number"						unless is_float($opts{value});
-	
-	my $h = rand();
-	
-	my @colors = ();
-	for (1 .. $opts{count}) {
-		$h += $golden_ratio_conjugate;
-  	$h %= 1;
-  	
-		my ($r, $g, $b) = $self->_hsv_to_rgb(rand(), $opts{saturation}, $opts{value});
-		
-		push (@colors, [$r, $g, $b]);
-	}
-	
-	return \@colors;
 }
 
 # Convert HSV colors to RGB, in a pretty way
