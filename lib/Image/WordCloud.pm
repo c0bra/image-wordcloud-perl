@@ -133,8 +133,8 @@ sub new {
 		}
 		# Otherwise if no font_file was specified and we have a font path, read in all the fonts from font_path
 		elsif (! -f $self->{'font_file'} && -d $self->{'font_path'}) {
-			opendir(my $fd, $self->{'font_path'})
-				my @fonts = map { File::Spec->catfile($self->{'font_path'}, $_) } grep { /\.ttf$/ }  readdir($fd);
+			opendir(my $fd, $self->{'font_path'});
+				my @fonts = map { File::Spec->catfile($self->{'font_path'}, $_) } grep { /\.ttf$/ } readdir($fd);
 			closedir($fd);
 			$self->{fonts} = \@fonts;
 		}
