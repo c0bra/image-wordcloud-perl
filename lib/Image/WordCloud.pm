@@ -8,12 +8,13 @@ use Carp qw(carp croak confess);
 use Params::Validate qw(:all);
 use List::Util qw(sum shuffle);
 use Data::Types qw(:int :float);
+use File::Spec;
+use File::ShareDir qw(:ALL);
 use Search::Dict;
 use GD;
 use GD::Text::Align;
 use Color::Scheme;
 use Math::PlanePath::TheodorusSpiral;
-#use Math::Fibonacci;
 
 our $golden_ratio_conjugate = 0.618033988749895;
 
@@ -67,22 +68,55 @@ sub new {
         word_count     => { type => SCALAR,   optional => 1 },
         prune_boring   => { type => SCALAR,   optional => 1, default => 1 },
         font_file      => { type => SCALAR,   optional => 1 },
+        font_path      => { type => SCALAR,   optional => 1 },
         stop_word_file => { type => SCALAR,   optional => 1, default => $stop_word_dict_file },
     });
     
     # ***TODO: Figure out how many words to use based on image size?
     $opts{'word_count'} ||= 30;
+    
+    # If a stop word file is specified, make sure it exists
+		if ($opts{'stop_word_file'}) {
+			unless (-f $opts{'stop_word_file'}) {
+				carp sprintf "Stop word file '%s' not found", $opts{'stop_word_file'};
+			}
+		}
 		
+		# Make sure the font file exists if it is specified
 		if ($opts{'font_file'}) {
 			unless (-f $opts{'font_file'}) {
 				carp sprintf "Font file '%s' not found", $opts{'font_file'};
 			}
 		}
 		
-		if ($opts{'stop_word_file'}) {
-			unless (-f $opts{'stop_word_file'}) {
-				carp sprintf "Stop word file '%s' not found", $opts{'stop_word_file'};
+		# Make sure the font path exists if it is specified
+		if ($opts{'font_path'}) {
+			unless (-d $opts{'font_path'}) {
+				carp sprintf "Specified font path '%s' not found", $opts{'font_path'};
 			}
+		}
+		# Otherwise, find the font path with File::ShareDir
+		else {
+			my $font_path;
+			eval {
+				$font_path = File::Spec->catdir(dist_dir('Image-WordCloud'), "fonts");
+			};
+			if ($@) {
+				#carp "Font path for dist 'Image-WordCloud' could not be found";
+			}
+			else {
+				$opts{'font_path'} = $font_path;
+			}
+		}
+		
+		# If we still haven't found a font path, try using ./share/fonts
+		if (! $opts{'font_path'}) {
+			my $local_font_path = File::Spec->catdir(".", "share", "fonts");
+			unless (-d $local_font_path) {
+				#carp sprintf "Local font path '%s' not found", $local_font_path;
+			}
+			
+			$opts{'font_path'} = $local_font_path;
 		}
 		
     my $class = ref( $proto ) || $proto;
@@ -91,12 +125,37 @@ sub new {
 			image_size     => $opts{'image_size'},
       word_count     => $opts{'word_count'},
       prune_boring   => $opts{'prune_boring'},
-      font_file      => $opts{'font_file'},
+      font_path      => $opts{'font_path'} || "",
+      font_file      => $opts{'font_file'} || "",
       stop_word_file => $opts{'stop_word_file'},
     };
     bless($self, $class);
+    
+    # Make sure we have a usable font file or font path
+		unless (-f $self->{'font_file'} || -d $self->{'font_path'}) {
+			carp sprintf "No usable font path or font file found, only fonts available will be from libgd, which suck";
+		}
+		# If a font_file is specified, use that as the only font
+		elsif (-f $self->{'font_file'}) {
+			$self->{fonts} = $self->{'font_file'};
+		}
+		# Otherwise if no font_file was specified and we have a font path, read in all the fonts from font_path
+		elsif (! -f $self->{'font_file'} && -d $self->{'font_path'}) {
+			opendir(my $fd, $self->{'font_path'})
+				# ***TODO add grep for font extensions here?
+				my @fonts = map { File::Spec->catfile($self->{'font_path'}, $_) } readdir($fd);
+			closedir($fd);
+			$self->{fonts} = \@fonts;
+		}
 
     return $self;
+}
+
+# Get a file from the dist share location
+sub _get_dist_file_option {
+	my ($opts, $option, $file) = @_;
+	
+	
 }
 
 =head2 words(\%words_to_use)

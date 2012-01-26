@@ -10,6 +10,8 @@ build_requires 'Test::More';
 requires 'Data::Types' => '0.09';
 requires 'Params::Validate';
 requires 'List::Util';
+requires 'File::Spec';
+requires 'File::ShareDir';
 requires 'Search::Dict';
 requires 'GD';
 requires 'GD::Text::Align';
