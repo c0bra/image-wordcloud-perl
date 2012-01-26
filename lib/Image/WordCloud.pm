@@ -165,9 +165,6 @@ Make the word cloud! Returns a GD image object
 sub cloud {
 	my $self = shift;
 	
-	# Remove boring words from our wordlist
-	#$self->_prune_boring_words() if $self->{prune_boring};
-	
 	# Create the image object 
 	#my $gd = GD::Image->newTrueColor(800, 600); # Doing truecolor borks the background, it defaults to black.
 	my $gd = GD::Image->new($self->{image_size}->[0], $self->{image_size}->[1]);
@@ -528,73 +525,6 @@ sub _hex2rgb {
 
 	my @rgb = map {hex($_) } unpack 'a2a2a2', $hex;
 	return @rgb;
-}
-
-# Remove "boring" words from a word list
-sub _prune_boring_words {
-	my $self = shift;
-	
-	my @opts = validate_pos(@_, { type => HASHREF, optional => 1 });
-	
-	if (! -f $boring_word_dict_file) {
-		carp "Boring word file '$boring_word_dict_file' not found, not pruning any words";
-		return;
-	}
-	
-	# Either use the words supplied to the subroutine or use what we have in the object
-	my $words = {};
-	if ($opts[0]) {
-		$words = $opts[0];
-	}
-	else {
-		$words = $self->{words};
-	}
-	
-	# Open "boring" word dictionary
-	open(my $dict, '<', $boring_word_dict_file);
-	
-	foreach my $word (keys %$words) {
-		# Search for the word in the dict file
-		#look $dict, $word, 0, 1;
-		look $dict, $word, {
-			dict => 0,
-			fold => 1,
-			cmp => sub {
-				($a eq $b) ? 0 : 1;
-			}
-		};
-		
-		my $found = <$dict>;
-		chomp $found; # strip newline
-		
-		#print "LOOK: '$word' <-> FOUND: '$found'\n";
-		
-		# If we found a word and it's equal to our word
-		if (defined $found && $found) {
-			# Strip off the parts of speech bit at the end of the line and capture it
-			$found =~ s/\s(.+)$//;
-			my ($parts_of_speech) = $1;
-			
-			$parts_of_speech =~ s/\|//; # strip pipes
-			
-			$found =~ s/\s*$//; # trim trailing whitespace
-			#$found = lc($found); # lower-case the found word, sometimes the first letter is upper (dunno why)
-			
-			# Turn the parts of speech into a hash
-			#my %parts = map { $_ => 1 } split('', $parts_of_speech);
-			
-			# Skip if we didn't actually find the word
-			next if (lc($word) ne lc($found));
-			
-			#print "WORD: $word : $parts_of_speech\n";
-			
-			# If this word is a definite article (D), or indefinite article (I), remove it
-			#if (exists $parts{'D'} || exists $parts{I}) {
-			if ($parts_of_speech =~ /[DI]/o) {
-				delete $words->{$word};
-			}
-		}
-	}
 }
 
 sub _prune_stop_words {
