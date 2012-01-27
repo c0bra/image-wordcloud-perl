@@ -175,7 +175,7 @@ sub new {
 sub _get_dist_file_option {
 	my ($opts, $option, $file) = @_;
 	
-	
+	return;
 }
 
 =head2 words(\%words_to_use)
@@ -233,6 +233,8 @@ sub words {
   	
   	$word_count++;
   }
+  
+  return $self;
 }
 
 =head2 cloud()
@@ -316,7 +318,7 @@ sub cloud {
 	foreach my $word ( shift @word_keys, shuffle @word_keys ) {
 		my $count = $self->{words}->{$word};
 		
-		my $text = new GD::Text::Align($gd);
+		my $text = GD::Text::Align->new($gd);
 		
 		# Use a random color
 		my $color = $palette[ rand @palette ];
@@ -612,6 +614,8 @@ sub _prune_stop_words {
 			#delete $words->{$word} if exists $STOP_WORDS{ $word };
 			delete $words->{$word} if exists $STOP_WORDS{ $word };
 	}
+	
+	return 1;
 }
 
 sub _read_stop_file {
@@ -651,7 +655,7 @@ sub add_stop_words {
 		$self->{stop_words}->{ lc($word) } = 1;
 	}
 		
-	return 1;
+	return $self;
 }
 
 # Detect a collision between two rectangles
