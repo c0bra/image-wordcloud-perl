@@ -1,16 +1,16 @@
 package Image::WordCloud;
 
-use 5.006;
 use strict;
 use warnings;
 
+use Image::WordCloud::StopWords::EN qw(%STOP_WORDS);
 use Carp qw(carp croak confess);
 use Params::Validate qw(:all);
 use List::Util qw(sum shuffle);
 use Data::Types qw(:int :float);
 use File::Spec;
 use File::ShareDir qw(:ALL);
-use File::Find::Rule;
+use File::Find::Rule;;
 use Search::Dict;
 use GD;
 use GD::Text::Align;
@@ -27,23 +27,44 @@ Image::WordCloud - The great new Image::WordCloud!
 
 =head1 VERSION
 
-Version 0.01
+Version 0.01_01
 
 =cut
 
-our $VERSION = '0.01';
+our $VERSION = '0.01_01';
 
 
 =head1 SYNOPSIS
 
-Quick summary of what the module does.
+Create "word cloud" images out of a set of specified words. Font size indicates the frequency with which a word is used. Colors are generated randomly. Fonts can be
+specified or chosen randomly.
 
 Perhaps a little code snippet.
 
     use Image::WordCloud;
 
     my $wc = Image::WordCloud->new();
-    ...
+    
+    $wc->words([qw/
+    		Four score and seven years ago our fathers brought forth on this continent a new nation conceived in Liberty and dedicated to the proposition that all men are created equal
+				Now we are engaged in a great civil war testing whether that nation or any nation so conceived and so dedicated can long endure We are met on a great battle field of that
+				war We have come to dedicate a portion of that field as a final resting place for those who here gave their lives that that nation might live It is altogether fitting and
+				proper that we should do this But in a larger sense we can not dedicate—we can not consecrate—we can not hallow—this ground The brave men living and dead who struggled
+				here have consecrated it far above our poor power to add or detract The world will little note nor long remember what we say here but it can never forget what they did here
+				It is for us the living rather to be dedicated here to the unfinished work which they who fought here have thus far so nobly advanced It is rather for us to be here dedicated
+				to the great task remaining before us—that from these honored dead we take increased devotion to that cause for which they here gave the last full measure of devotion—that we
+				here highly resolve that these dead shall not have died in vain—that this nation under God shall have a new birth of freedom—and that government of the people by the people
+				for the people shall not perish from the earth
+		/]);
+		
+		my $gd = $wc->cloud();
+		
+		open(my $fh, '>', 'gettysburg.png');
+			binmode $fh;
+			print $fh $gd->png();
+		close($fh);
+		
+		# See examples/gettysburg.png for how the created image looks. script/gettysburg.pl will create it
 
 =head1 SUBROUTINES/METHODS
 
@@ -55,7 +76,7 @@ sub new {
     my $proto = shift;
 
     my %opts = validate(@_, {
-    	  image_size     => { type => ARRAYREF | UNDEF, optional => 1, default => [800, 600] },
+    	  image_size     => { type => ARRAYREF | UNDEF, optional => 1, default => [400, 400] },
         word_count     => { type => SCALAR | UNDEF,   optional => 1 },
         prune_boring   => { type => SCALAR | UNDEF,   optional => 1, default => 1 },
         font           => { type => SCALAR | UNDEF,   optional => 1 },
@@ -65,7 +86,7 @@ sub new {
     });
     
     # ***TODO: Figure out how many words to use based on image size?
-    $opts{'word_count'} ||= 30;
+    $opts{'word_count'} ||= 70;
     
     # If a stop word file is specified, make sure it exists
 		if ($opts{'stop_word_file'}) {
@@ -563,10 +584,12 @@ sub _prune_stop_words {
 	}
 	
 	# Read in the stop word file if we haven't already
-	if (! $self->{read_stop_file}) { $self->_read_stop_file(); }
+	#if (! $self->{read_stop_file}) { $self->_read_stop_file(); }
 	
 	foreach my $word (keys %$words) {
-			delete $words->{$word} if exists $self->{stop_words}->{ $word };
+			#delete $words->{$word} if exists $self->{stop_words}->{ $word };
+			#delete $words->{$word} if exists $STOP_WORDS{ $word };
+			delete $words->{$word} if exists $STOP_WORDS{ $word };
 	}
 }
 
