@@ -29,8 +29,6 @@ share/fonts/AveriaSerif-Italic.ttf
 share/fonts/AveriaSerif-Light.ttf
 share/fonts/AveriaSerif-LightItalic.ttf
 share/fonts/AveriaSerif-Regular.ttf
-share/fonts/GeosansLight-Oblique.ttf
-share/fonts/GeosansLight.ttf
 t/00-load.t
 t/01-init.t
 t/02-addwords.t
