@@ -24,7 +24,7 @@ our $stop_word_dict_file = "./share/pos/stop_words.txt";
 
 =head1 NAME
 
-Image::WordCloud - The great new Image::WordCloud!
+Image::WordCloud - Create word cloud images
 
 =head1 VERSION
 
@@ -71,7 +71,7 @@ Perhaps a little code snippet.
 
 =head1 SUBROUTINES/METHODS
 
-=head2 new
+=head2 new()
 
 =cut
 
