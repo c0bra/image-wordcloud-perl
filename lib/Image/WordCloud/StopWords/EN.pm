@@ -1,5 +1,8 @@
 package Image::WordCloud::StopWords::EN;
 
+use strict;
+use warnings;
+
 our $VERSION = '0.01';
 
 require Exporter;

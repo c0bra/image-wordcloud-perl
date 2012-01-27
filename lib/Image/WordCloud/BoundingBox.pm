@@ -1,5 +1,7 @@
 package Image::WordCloud::BoundingBox;
 
+use strict;
+use warnings;
 
 =head1 SUBROUTINES/METHODS
 
