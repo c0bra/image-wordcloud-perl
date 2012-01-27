@@ -178,7 +178,7 @@ sub _get_dist_file_option {
 	return;
 }
 
-=head2 words(\%words_to_use)
+=head2 words(\%words_to_use | \@words | @words_to_use)
 
 Set up hashref \%words_to_use as the words we build the word cloud from.
 
@@ -189,19 +189,33 @@ Keys are the words, values are their count.
 sub words {
 	my $self = shift;
 	
-	my @opts = validate_pos(@_,
-  	{ type => HASHREF | ARRAYREF, optional => 1 }, # \%words
-  );
+	#my @opts = validate_pos(@_,
+  #	{ type => HASHREF | ARRAYREF, optional => 1 }, # \%words
+  #);
   
-  # Return words if no argument is specified
-  if (! $opts[0]) { return $self->{words}; }
+  # Return words if no arguments are specified
+  if (scalar(@_) == 0) { return $self->{words}; }
+  
+  my $arg1 = $_[0];
   
   my %words = ();
-  if (ref($opts[0]) eq 'HASH') {
-  	%words = %{ $opts[0] };
+  
+  # Argument is a hashref, just push it straight into %words
+  if (ref($arg1) eq 'HASH') {
+  	%words = %{ $arg1 };
 	}
-	elsif (ref($opts[0]) eq 'ARRAY') {
-		foreach my $word(map { lc } @{ $opts[0] }) {
+	else {
+		# Argument is an arrayref, strip non-word characters, lc() each word and build the counts
+		my @words = ();
+		if (ref($arg1) eq 'ARRAY') {
+			@words = @$arg1;
+		}
+		# Assume it's a straight array
+		else {
+			@words = @_;
+		}
+		
+		foreach my $word (map { lc } @words) {
 			$word =~ s/\W//o;
 			$words{ $word }++;
 		}
