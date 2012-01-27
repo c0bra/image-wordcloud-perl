@@ -10,6 +10,7 @@ use List::Util qw(sum shuffle);
 use Data::Types qw(:int :float);
 use File::Spec;
 use File::ShareDir qw(:ALL);
+use File::Find::Rule;
 use Search::Dict;
 use GD;
 use GD::Text::Align;
@@ -133,9 +134,11 @@ sub new {
 		}
 		# Otherwise if no font_file was specified and we have a font path, read in all the fonts from font_path
 		elsif (! -f $self->{'font_file'} && -d $self->{'font_path'}) {
-			opendir(my $fd, $self->{'font_path'});
-				my @fonts = map { File::Spec->catfile($self->{'font_path'}, $_) } grep { /\.ttf$/ } readdir($fd);
-			closedir($fd);
+				my @fonts = File::Find::Rule->new()
+					->extras({ untaint => 1})
+					->file()
+					->name('*.ttf')
+					->in( $self->{'font_path'} );
 			$self->{fonts} = \@fonts;
 		}
 
