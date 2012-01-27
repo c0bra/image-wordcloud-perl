@@ -18,9 +18,6 @@ use GD::Text::Align;
 use Color::Scheme;
 use Math::PlanePath::TheodorusSpiral;
 
-our $golden_ratio_conjugate = 0.618033988749895;
-
-our $stop_word_dict_file = "./share/pos/stop_words.txt";
 
 =head1 NAME
 
@@ -85,19 +82,11 @@ sub new {
         font           => { type => SCALAR | UNDEF,   optional => 1 },
         font_file      => { type => SCALAR | UNDEF,   optional => 1 },
         font_path      => { type => SCALAR | UNDEF,   optional => 1 },
-        stop_word_file => { type => SCALAR | UNDEF,   optional => 1, default => $stop_word_dict_file },
         background     => { type => ARRAYREF,         optional => 1, default => [40, 40, 40] },
     });
     
     # ***TODO: Figure out how many words to use based on image size?
     $opts{'word_count'} ||= 70;
-    
-    # If a stop word file is specified, make sure it exists
-		if ($opts{'stop_word_file'}) {
-			unless (-f $opts{'stop_word_file'}) {
-				carp sprintf "Stop word file '%s' not found", $opts{'stop_word_file'};
-			}
-		}
 		
 		# Make sure the font file exists if it is specified
 		if ($opts{'font_file'}) {
@@ -145,7 +134,6 @@ sub new {
       font           => $opts{'font'}      || "",
       font_path      => $opts{'font_path'} || "",
       font_file      => $opts{'font_file'} || "",
-      stop_word_file => $opts{'stop_word_file'},
       background		 => $opts{'background'},
     };
     bless($self, $class);
@@ -624,33 +612,8 @@ sub _prune_stop_words {
 	#if (! $self->{read_stop_file}) { $self->_read_stop_file(); }
 	
 	foreach my $word (keys %$words) {
-			#delete $words->{$word} if exists $self->{stop_words}->{ $word };
-			#delete $words->{$word} if exists $STOP_WORDS{ $word };
 			delete $words->{$word} if exists $STOP_WORDS{ $word };
 	}
-	
-	return 1;
-}
-
-sub _read_stop_file {
-	my $self = shift;
-	
-	my $stop_word_file = $self->{'stop_word_file'};
-	if (! -f $stop_word_file) {
-		carp "Stop word file '$stop_word_file' not found, not pruning any words";
-		return;
-	}
-	
-	#$self->{stop_words} = {};
-	
-	open(my $dict, '<', $stop_word_file);
-	while (my $line = <$dict>) {
-		chomp $line;
-		$self->{stop_words}->{ $line } = 1;
-	}
-	close($dict);
-	
-	$self->{'read_stop_file'} = 1;
 	
 	return 1;
 }
