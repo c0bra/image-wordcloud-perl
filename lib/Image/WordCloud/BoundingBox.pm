@@ -1,4 +1,4 @@
-package HTML::WordCloud;
+package Image::WordCloud::BoundingBox;
 
 
 =head1 SUBROUTINES/METHODS
@@ -19,7 +19,5 @@ sub new {
 
     return $self;
 }
-
-
 
 1;
