@@ -256,15 +256,11 @@ sub cloud {
 	my $center_x = $gd->width  / 2;
 	my $center_y = $gd->height / 2;
 	
-	my $gray  = $gd->colorAllocate( $self->{background}->[0,1,2] ); # Background color, gray
+	my $gray  = $gd->colorAllocate( @{$self->{background}}[0,1,2] ); # Background color, gray
 	my $white = $gd->colorAllocate(255, 255, 255);
 	my $black = $gd->colorAllocate(0, 0, 0);
 	
-	my @rand_colors = map { [$self->_hex2rgb($_)] } Color::Scheme->new
-		->from_hue(rand(355))
-		->scheme('analogic')
-		->variation('default')
-		->colors();
+	my @rand_colors = $self->_random_colors();
 
 	my @palette = ();
 	foreach my $c (@rand_colors) {
@@ -536,6 +532,26 @@ sub _normalize_num {
 	return ($num - $min) / ($max - $min);
 }
 
+# Return a list of random colors as an array of RGB arrayrefs
+# ( [25,30,60], [2,204,300] ), etc.
+sub _random_colors {
+	my $self = shift;
+	
+	my %opts = validate(@_, {
+    	  hue       => { type => SCALAR, optional => 1, default => rand(359)  },
+    	  scheme    => { type => SCALAR, optional => 1, default => 'analogic' },
+    	  variation => { type => SCALAR, optional => 1, default => 'default'  },
+  });
+	
+	my @rand_colors = map { [$self->_hex2rgb($_)] } Color::Scheme->new
+		->from_hue( $opts{'hue'} )
+		->scheme( $opts{'scheme'} )
+		->variation( $opts{'variation'} )
+		->colors();
+		
+	return @rand_colors;
+}
+
 # Convert HSV colors to RGB, in a pretty way
 # Stolen from: http://martin.ankerl.com/2009/12/09/how-to-create-random-colors-programmatically/
 sub _hsv_to_rgb {
@@ -623,7 +639,7 @@ sub _read_stop_file {
 
 =head2 add_stop_words(@words)
 
-Add new stop words onto the list.
+Add new stop words onto the list. Automatically puts words in lowercase.
 
 =cut
 
@@ -638,10 +654,12 @@ sub add_stop_words {
 	return 1;
 }
 
+# Detect a collision between two rectangles
 sub _detect_collision {
 	my $self = shift;
 	
-	my ($a_x, $a_y, $a_w, $a_h, $b_x, $b_y, $b_w, $b_h) = @_;
+	my ($a_x, $a_y, $a_w, $a_h,
+			$b_x, $b_y, $b_w, $b_h) = @_;
 	
 	if (
 		!( ($b_x > $a_x + $a_w) || ($b_x + $b_w < $a_x) ||
@@ -654,9 +672,10 @@ sub _detect_collision {
 	}
 }
 
+# Stroke the outline of a bounding box
 sub _stroke_bbox {
-	my $self = shift;
-	my $gd = shift;
+	my $self  = shift;
+	my $gd    = shift;
 	my $color = shift;
 	
 	my ($x1, $y1, $x2, $y2, $x3, $y3, $x4, $y4) = @_;
@@ -669,6 +688,7 @@ sub _stroke_bbox {
 	$gd->line($x4, $y4, $x1, $y1, $color);
 }
 
+# Return a random ingeger between two numbers
 sub _random_int_between {
 	my $self = shift;
 	my($min, $max) = @_;
