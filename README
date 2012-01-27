@@ -1,5 +1,5 @@
 NAME
-    Image::WordCloud - The great new Image::WordCloud!
+    Image::WordCloud - Create word cloud images
 
 VERSION
     Version 0.01_01
@@ -39,8 +39,8 @@ SYNOPSIS
                     # See examples/gettysburg.png for how the created image looks. script/gettysburg.pl will create it
 
 SUBROUTINES/METHODS
-  new
-  words(\%words_to_use)
+  new()
+  words(\%words_to_use | \@words | @words_to_use)
     Set up hashref \%words_to_use as the words we build the word cloud from.
 
     Keys are the words, values are their count.
@@ -49,13 +49,13 @@ SUBROUTINES/METHODS
     Make the word cloud. Returns a GD image object
 
   add_stop_words(@words)
-    Add new stop words onto the list.
+    Add new stop words onto the list. Automatically puts words in lowercase.
 
 AUTHOR
     Brian Hann, `<brian.hann at gmail.com>'
 
 BUGS
-    Please report any bugs or feature requests to `bug-html-wordcloud at
+    Please report any bugs or feature requests to `bug-image-wordcloud at
     rt.cpan.org', or through the web interface at
     http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Image-WordCloud. I will
     be notified, and then you'll automatically be notified of progress on

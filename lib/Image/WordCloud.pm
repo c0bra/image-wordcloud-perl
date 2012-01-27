@@ -723,7 +723,7 @@ Brian Hann, C<< <brian.hann at gmail.com> >>
 
 =head1 BUGS
 
-Please report any bugs or feature requests to C<bug-html-wordcloud at rt.cpan.org>, or through
+Please report any bugs or feature requests to C<bug-image-wordcloud at rt.cpan.org>, or through
 the web interface at L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Image-WordCloud>.  I will be notified, and then you'll
 automatically be notified of progress on your bug as I make changes.
 
