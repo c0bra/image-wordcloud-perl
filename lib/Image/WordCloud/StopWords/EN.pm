@@ -6,8 +6,6 @@ require Exporter;
 our @ISA = qw(Exporter);
 our @EXPORT_OK = qw( %STOP_WORDS );
 
-=head1 
-
 our %STOP_WORDS = map { $_ => 1 } qw(
 a
 about
