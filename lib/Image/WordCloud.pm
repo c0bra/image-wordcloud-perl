@@ -1,5 +1,7 @@
 package Image::WordCloud;
 
+use 5.008;
+
 use strict;
 use warnings;
 
@@ -10,8 +12,7 @@ use List::Util qw(sum shuffle);
 use Data::Types qw(:int :float);
 use File::Spec;
 use File::ShareDir qw(:ALL);
-use File::Find::Rule;;
-use Search::Dict;
+use File::Find::Rule;
 use GD;
 use GD::Text::Align;
 use Color::Scheme;
@@ -45,6 +46,7 @@ Perhaps a little code snippet.
 
     my $wc = Image::WordCloud->new();
     
+    # Add the Gettysburg Address
     $wc->words([qw/
     		Four score and seven years ago our fathers brought forth on this continent a new nation conceived in Liberty and dedicated to the proposition that all men are created equal
 				Now we are engaged in a great civil war testing whether that nation or any nation so conceived and so dedicated can long endure We are met on a great battle field of that
@@ -57,6 +59,7 @@ Perhaps a little code snippet.
 				for the people shall not perish from the earth
 		/]);
 		
+		# Create the word cloud as a GD image
 		my $gd = $wc->cloud();
 		
 		open(my $fh, '>', 'gettysburg.png');
@@ -83,6 +86,7 @@ sub new {
         font_file      => { type => SCALAR | UNDEF,   optional => 1 },
         font_path      => { type => SCALAR | UNDEF,   optional => 1 },
         stop_word_file => { type => SCALAR | UNDEF,   optional => 1, default => $stop_word_dict_file },
+        background     => { type => ARRAYREF,         optional => 1, default => [40, 40, 40] },
     });
     
     # ***TODO: Figure out how many words to use based on image size?
@@ -142,6 +146,7 @@ sub new {
       font_path      => $opts{'font_path'} || "",
       font_file      => $opts{'font_file'} || "",
       stop_word_file => $opts{'stop_word_file'},
+      background		 => $opts{'background'},
     };
     bless($self, $class);
     
@@ -232,7 +237,7 @@ sub words {
 
 =head2 cloud()
 
-Make the word cloud! Returns a GD image object
+Make the word cloud. Returns a L<GD> image object
 
 =cut
 
@@ -251,7 +256,7 @@ sub cloud {
 	my $center_x = $gd->width  / 2;
 	my $center_y = $gd->height / 2;
 	
-	my $gray  = $gd->colorAllocate(40, 40, 40); # background color, gray
+	my $gray  = $gd->colorAllocate( $self->{background}->[0,1,2] ); # Background color, gray
 	my $white = $gd->colorAllocate(255, 255, 255);
 	my $black = $gd->colorAllocate(0, 0, 0);
 	

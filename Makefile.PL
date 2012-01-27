@@ -13,7 +13,6 @@ requires 'List::Util';
 requires 'File::Spec';
 requires 'File::Find::Rule';
 requires 'File::ShareDir';
-requires 'Search::Dict';
 requires 'GD';
 requires 'GD::Text::Align';
 requires 'Color::Scheme';

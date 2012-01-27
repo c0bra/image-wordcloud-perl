@@ -6,6 +6,8 @@ require Exporter;
 our @ISA = qw(Exporter);
 our @EXPORT_OK = qw( %STOP_WORDS );
 
+=head1 
+
 our %STOP_WORDS = map { $_ => 1 } qw(
 a
 about
@@ -120,3 +122,43 @@ your
 );
 
 1;
+
+__END__
+
+=pod
+
+=head1 NAME
+
+Image::WordCloud::StopWords::EN - Exports hash of English "stop" words, words we should not
+include in any word clouds.
+
+=head1 EXPORTS
+
+=head2 %STOP_WORS
+
+Hash of English stop words
+
+	our %STOP_WORDS = map { $_ => 1 } qw(
+		a
+		about
+		after
+		all
+		almost
+		# ...
+	);
+
+=head1 COPYRIGHT & LICENSE
+
+Copyright 2012 Brian Hann, all rights reserved.
+
+This program is free software; you can redistribute it and/or modify it
+under the terms of either: the GNU General Public License as published
+by the Free Software Foundation; or the Artistic License.
+
+See http://dev.perl.org/licenses/ for more information.
+
+=head1 SEE ALSO
+
+L<Image::WordCloud>
+	
+=cut
