@@ -9,7 +9,6 @@ use Image::WordCloud::StopWords::EN qw(%STOP_WORDS);
 use Carp qw(carp croak confess);
 use Params::Validate qw(:all);
 use List::Util qw(sum shuffle);
-use Data::Types qw(:int :float);
 use File::Spec;
 use File::ShareDir qw(:ALL);
 use File::Find::Rule;
