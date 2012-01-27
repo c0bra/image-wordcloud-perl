@@ -629,7 +629,7 @@ sub add_stop_words {
 	my @words = @_;
 	
 	foreach my $word (@words) {
-		$self->{stop_words}->{ lc($word) } = 1;
+		$STOP_WORDS{ lc($word) } = 1;
 	}
 		
 	return $self;
