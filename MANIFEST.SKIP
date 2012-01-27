@@ -16,3 +16,4 @@ pod2htm*.tmp
 Image-WordCloud-*
 ignore.txt
 script/
+.bak

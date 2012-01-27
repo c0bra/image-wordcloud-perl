@@ -1,55 +1,92 @@
-Image-WordCloud
+NAME
+    Image::WordCloud - The great new Image::WordCloud!
 
-The README is used to introduce the module and provide instructions on
-how to install the module, any machine dependencies it may have (for
-example C compilers and installed libraries) and any other information
-that should be provided before the module is installed.
+VERSION
+    Version 0.01_01
 
-A README file is required for CPAN modules since CPAN extracts the README
-file from a module distribution so that people browsing the archive
-can use it to get an idea of the module's uses. It is usually a good idea
-to provide version information here so that people can decide whether
-fixes for the module are worth downloading.
+SYNOPSIS
+    Create "word cloud" images out of a set of specified words. Font size
+    indicates the frequency with which a word is used. Colors are generated
+    randomly. Fonts can be specified or chosen randomly.
 
+    Perhaps a little code snippet.
 
-INSTALLATION
+        use Image::WordCloud;
 
-To install this module, run the following commands:
+        my $wc = Image::WordCloud->new();
+    
+        # Add the Gettysburg Address
+        $wc->words([qw/
+                    Four score and seven years ago our fathers brought forth on this continent a new nation conceived in Liberty and dedicated to the proposition that all men are created equal
+                                    Now we are engaged in a great civil war testing whether that nation or any nation so conceived and so dedicated can long endure We are met on a great battle field of that
+                                    war We have come to dedicate a portion of that field as a final resting place for those who here gave their lives that that nation might live It is altogether fitting and
+                                    proper that we should do this But in a larger sense we can not dedicate—we can not consecrate—we can not hallow—this ground The brave men living and dead who struggled
+                                    here have consecrated it far above our poor power to add or detract The world will little note nor long remember what we say here but it can never forget what they did here
+                                    It is for us the living rather to be dedicated here to the unfinished work which they who fought here have thus far so nobly advanced It is rather for us to be here dedicated
+                                    to the great task remaining before us—that from these honored dead we take increased devotion to that cause for which they here gave the last full measure of devotion—that we
+                                    here highly resolve that these dead shall not have died in vain—that this nation under God shall have a new birth of freedom—and that government of the people by the people
+                                    for the people shall not perish from the earth
+                    /]);
+                
+                    # Create the word cloud as a GD image
+                    my $gd = $wc->cloud();
+                
+                    open(my $fh, '>', 'gettysburg.png');
+                            binmode $fh;
+                            print $fh $gd->png();
+                    close($fh);
+                
+                    # See examples/gettysburg.png for how the created image looks. script/gettysburg.pl will create it
 
-	perl Makefile.PL
-	make
-	make test
-	make install
+SUBROUTINES/METHODS
+  new
+  words(\%words_to_use)
+    Set up hashref \%words_to_use as the words we build the word cloud from.
 
-SUPPORT AND DOCUMENTATION
+    Keys are the words, values are their count.
 
-After installing, you can find documentation for this module with the
-perldoc command.
+  cloud()
+    Make the word cloud. Returns a GD image object
 
-    perldoc Image::WordCloud
+  add_stop_words(@words)
+    Add new stop words onto the list.
 
-You can also look for information at:
+AUTHOR
+    Brian Hann, `<brian.hann at gmail.com>'
 
-    RT, CPAN's request tracker (report bugs here)
+BUGS
+    Please report any bugs or feature requests to `bug-html-wordcloud at
+    rt.cpan.org', or through the web interface at
+    http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Image-WordCloud. I will
+    be notified, and then you'll automatically be notified of progress on
+    your bug as I make changes.
+
+SUPPORT
+    You can find documentation for this module with the perldoc command.
+
+        perldoc Image::WordCloud
+
+    You can also look for information at:
+
+    * RT: CPAN's request tracker (report bugs here)
         http://rt.cpan.org/NoAuth/Bugs.html?Dist=Image-WordCloud
 
-    AnnoCPAN, Annotated CPAN documentation
+    * AnnoCPAN: Annotated CPAN documentation
         http://annocpan.org/dist/Image-WordCloud
 
-    CPAN Ratings
+    * CPAN Ratings
         http://cpanratings.perl.org/d/Image-WordCloud
 
-    Search CPAN
+    * Search CPAN
         http://search.cpan.org/dist/Image-WordCloud/
 
-
+ACKNOWLEDGEMENTS
 LICENSE AND COPYRIGHT
+    Copyright 2012 Brian Hann.
 
-Copyright (C) 2012 Brian Hann
+    This program is free software; you can redistribute it and/or modify it
+    under the terms of either: the GNU General Public License as published
+    by the Free Software Foundation; or the Artistic License.
 
-This program is free software; you can redistribute it and/or modify it
-under the terms of either: the GNU General Public License as published
-by the Free Software Foundation; or the Artistic License.
-
-See http://dev.perl.org/licenses/ for more information.
+    See http://dev.perl.org/licenses/ for more information.
 

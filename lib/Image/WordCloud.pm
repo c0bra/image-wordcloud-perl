@@ -77,7 +77,7 @@ Perhaps a little code snippet.
 
 sub new {
     my $proto = shift;
-
+		
     my %opts = validate(@_, {
     	  image_size     => { type => ARRAYREF | UNDEF, optional => 1, default => [400, 400] },
         word_count     => { type => SCALAR | UNDEF,   optional => 1 },
