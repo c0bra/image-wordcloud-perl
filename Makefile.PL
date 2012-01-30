@@ -5,7 +5,8 @@ all_from 'lib/Image/WordCloud.pm';
 author   q{Brian Hann <brian.hann@gmail.com>};
 license  'perl';
 
-build_requires 'Test::More';
+test_requires 'Test::More';
+test_requires 'Test::Exception';
 
 requires 'Params::Validate';
 requires 'List::Util';
