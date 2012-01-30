@@ -7,6 +7,10 @@ use warnings;
 
 Not used currently
 
+=head2 new()
+
+Create a bounding box
+
 =cut
 
 sub new {
