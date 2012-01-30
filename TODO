@@ -1,3 +1,6 @@
+1/30/2012
+* Allow font_path to take a list of paths
+
 1/27/2012
 * Use hierarchical bounding boxes for word collisions
 * Allow a Color::Scheme object to be passed in for colors

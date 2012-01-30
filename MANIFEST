@@ -36,6 +36,7 @@ t/03-boringwords.t
 t/04-palette.t
 t/05-fonts.t
 t/06-collision.t
+t/07-chain.t
 t/boilerplate.t
 t/manifest.t
 t/pod-coverage.t
