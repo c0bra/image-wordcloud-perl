@@ -3,8 +3,6 @@ package Image::WordCloud::StopWords::EN;
 use strict;
 use warnings;
 
-our $VERSION = '0.01';
-
 require Exporter;
 our @ISA = qw(Exporter);
 our @EXPORT_OK = qw( %STOP_WORDS );
