@@ -19,7 +19,7 @@ my $words = "This is a bunch of words";
 $wc->words($words);
 is(scalar keys (%{$wc->{words}}), 6, 'Right number of words from string');
 
-my $words = "This is a bunch of words. This might be a BUNCH!";
+$words = "This is a bunch of words. This might be a BUNCH!";
 $wc->words($words);
 is(scalar keys (%{$wc->{words}}), 8, 'Right number of words from string with formatting');
 

@@ -161,5 +161,5 @@ See http://dev.perl.org/licenses/ for more information.
 =head1 SEE ALSO
 
 L<Image::WordCloud>
-	
+
 =cut
