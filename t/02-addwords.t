@@ -1,7 +1,7 @@
 #!perl -T
 
 use strict;
-use Test::More tests => 12;
+use Test::More tests => 14;
 use Test::Exception;
 use Image::WordCloud;
 
@@ -14,17 +14,26 @@ my %wordhash = map { shift @tempwords => $_ } (1 .. ($#tempwords+1));
 
 is(scalar keys(%wordhash), 6, 'Starting with right number of words');
 
+# Add words as a string
+my $words = "This is a bunch of words";
+$wc->words($words);
+is(scalar keys (%{$wc->{words}}), 6, 'Right number of words from string');
+
+my $words = "This is a bunch of words. This might be a BUNCH!";
+$wc->words($words);
+is(scalar keys (%{$wc->{words}}), 8, 'Right number of words from string with formatting');
+
 # Add words as arrayref
 $wc->words(\@words);
-is(scalar keys (%{$wc->{words}}), 6, 'Got right number of words directly from WordCloud object');
+is(scalar keys (%{$wc->{words}}), 6, 'Right number of words from arrayref');
 
 # Add words as array
 $wc->words(@words);
-is(scalar keys (%{$wc->{words}}), 6, 'Got right number of words directly from WordCloud object');
+is(scalar keys (%{$wc->{words}}), 6, 'Right number of words from array');
 
 # Add words as hash
 $wc->words(\%wordhash);
-is(scalar keys (%{$wc->{words}}), 6, 'Got right number of words directly from WordCloud object');
+is(scalar keys (%{$wc->{words}}), 6, 'Right number of words from hashref');
 
 is($wc->{words}->{'this'}, 1,  'Right count for first word in list');
 is($wc->{words}->{'words'}, 6, 'Right count for last word in list');

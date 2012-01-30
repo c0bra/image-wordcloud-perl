@@ -39,21 +39,13 @@ specified or chosen randomly.
 Perhaps a little code snippet.
 
     use Image::WordCloud;
+    use File::Slurp;
 
     my $wc = Image::WordCloud->new();
     
     # Add the Gettysburg Address
-    $wc->words([qw/
-    		Four score and seven years ago our fathers brought forth on this continent a new nation conceived in Liberty and dedicated to the proposition that all men are created equal
-				Now we are engaged in a great civil war testing whether that nation or any nation so conceived and so dedicated can long endure We are met on a great battle field of that
-				war We have come to dedicate a portion of that field as a final resting place for those who here gave their lives that that nation might live It is altogether fitting and
-				proper that we should do this But in a larger sense we can not dedicate—we can not consecrate—we can not hallow—this ground The brave men living and dead who struggled
-				here have consecrated it far above our poor power to add or detract The world will little note nor long remember what we say here but it can never forget what they did here
-				It is for us the living rather to be dedicated here to the unfinished work which they who fought here have thus far so nobly advanced It is rather for us to be here dedicated
-				to the great task remaining before us—that from these honored dead we take increased devotion to that cause for which they here gave the last full measure of devotion—that we
-				here highly resolve that these dead shall not have died in vain—that this nation under God shall have a new birth of freedom—and that government of the people by the people
-				for the people shall not perish from the earth
-		/]);
+    my $gb = read_file('script/gettysburg.txt');
+    $wc->words($gb);
 		
 		# Create the word cloud as a GD image
 		my $gd = $wc->cloud();
@@ -187,26 +179,41 @@ sub words {
   
   my %words = ();
   
-  # Argument is a hashref, just push it straight into %words
-  if (ref($arg1) eq 'HASH') {
-  	%words = %{ $arg1 };
-	}
-	else {
-		# Argument is an arrayref, strip non-word characters, lc() each word and build the counts
-		my @words = ();
-		if (ref($arg1) eq 'ARRAY') {
-			@words = @$arg1;
-		}
-		# Assume it's a straight array
-		else {
-			@words = @_;
-		}
-		
-		foreach my $word (map { lc } @words) {
+ 	# More than one argument, assume we're being passed a list of words
+  if (scalar(@_) > 1) {
+  	my @words = @_;
+  	
+  	# Strip non-word characters, lc() each word and build the counts
+  	foreach my $word (map { lc } @words) {
 			$word =~ s/\W//o;
 			$words{ $word }++;
 		}
-	}
+  }
+  else {
+  	# Argument is a hashref, just push it straight into %words
+	  if (ref($arg1) eq 'HASH') {
+	  	%words = %{ $arg1 };
+		}
+		# Argument is an arrayref
+		elsif (ref($arg1) eq 'ARRAY') {
+			my @words = @$arg1;
+			
+			# Strip non-word characters, lc() each word and build the counts
+			foreach my $word (map { lc } @words) {
+				$word =~ s/\W//o;
+				$words{ $word }++;
+			}
+		}
+		# Argument is a scalar, assume it's a string of words
+		else {
+			my $words = $arg1;
+			while ($words =~ /(?<!<)\b([\w\-']+)\b(?!>)/g) { #' <-- so UltraEdit doesnt fubar syntax highliting
+				my $word = lc($1);
+				$word =~ s/\W//o;
+				$words{ $word }++;
+			}
+		}
+  }
   
   # Blank out the current word list;
   $self->{words} = {};
