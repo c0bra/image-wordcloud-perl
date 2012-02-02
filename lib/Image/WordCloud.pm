@@ -195,7 +195,7 @@ sub _get_dist_file_option {
 	return;
 }
 
-=head2 words(\%words_to_use | \@words | @words_to_use, $words)
+=head2 words(\%words_to_use | \@words | @words_to_use | $words)
 
 Takes either a hashref, arrayref, array or string.
 
@@ -730,7 +730,7 @@ sub _random_int_between {
 
 =head1 AUTHOR
 
-Brian Hann, C<< <brian.hann at gmail.com> >>
+Brian Hann, C<< <bhann at cpan.org> >>
 
 =head1 BUGS
 
