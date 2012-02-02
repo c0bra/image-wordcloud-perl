@@ -7,6 +7,8 @@ Revision history for Image-WordCloud
 	  tries the longest word in each font, scaling the font size down until it
 	  will fit width the image's width. (Eventually this will need to be changed
 	  to handle vertical words)
+	* Long FIRST words were overrunning the image bounds too. The first (largest)
+	  word was not being checked to make sure its placement fit within the image.
 
 0.01_01		2012.01.27
 
