@@ -327,8 +327,9 @@ sub cloud {
 	my @texts = ();
 	
 	# Max font size in points (25% of image height)
-	my $max_points = ($gd->height * 72 / 96) * .25; # Convert height in pixels to points, then take 25% of that number
-	my $min_points = ($gd->height * 72 / 96) * 0.0175; # 0.02625; 
+	#my $max_points = $self->_pixels_to_points($gd->height) * .25; # Convert height in pixels to points, then take 25% of that number
+	my $max_points = $self->_max_font_size();
+	my $min_points = $self->_pixels_to_points($gd->height) * 0.0175; # 0.02625; 
 	
 	# Scaling modifier for font sizes
 	my $max_count = $self->{max_count};
@@ -565,6 +566,121 @@ sub _new_coordinates {
 	$y += $gd->height / 2;
 	
 	return ($x, $y);
+}
+
+# Return the maximum font-size this image can use
+sub _max_font_size {
+	my $self = shift;
+	
+	# Font size we'll return (start with 25% of the image height);
+	my $fontsize = $self->_init_max_font_size();
+	
+	# Get the smallest side of the image
+	#my $min_edge_px = $self->{image_size}->[0] < $self->{image_size}->[1] ? $self->{image_size}->[0] : $self->{image_size}->[1];
+	#my $min_points = $self->pixels_to_points($min_edge_px);
+	
+	# Image width and heigth
+	my ($w, $h) = $self->{image_size}->[0,1];
+	
+	# Get the longest word
+	my $max_word = "";
+	foreach my $word (keys %{ $self->{words} }) {
+		$max_word = $word if length($word) > length($max_word);
+	}
+	
+	# Create the text object
+	my $t = new GD::Text::Align(new GD::Image);
+	$t->set_text($max_word);
+	
+	# Get every possible font we can use
+	my @fonts = $self->_get_all_fonts();
+	
+	while ($fontsize > 0) {
+		my $toobig = 0;
+		
+		# Go through every font
+		foreach my $font (@fonts) {
+			# Set the font on this text object
+			$t->set_font($font, $fontsize);
+			
+			# The text box is wider than the image
+			if ($t->get('width') > $w) {
+				$toobig = 1;
+				last;
+			}
+		}
+		
+		last if ! $toobig;
+		
+		$fontsize--;
+	}
+	
+	return $fontsize;
+}
+
+# Intial maximum font size is the 1/4 the heigth of the image
+sub _init_max_font_size {
+	my $self = shift;
+	return $self->_pixels_to_points($self->{image_size}->[1] * .25);
+}
+
+# Return a single font
+sub _get_font {
+	my $self = shift;
+	
+	my $font = "";
+	
+	# From a font file
+	if ($self->{'font_file'}) {
+		$font = $self->{'font_file'};
+	}
+	# Or the specified font
+	elsif ($self->{'font'} && -d $self->{'font_path'}) {
+		$font = $self->{'font'};
+	}
+	# ...or use a random font
+	elsif (scalar @{$self->{'fonts'}} > 0) {
+		$font = $self->{'fonts'}->[ rand @{$self->{'fonts'}} ];
+			unless (-f $font) { carp "Font file '$font' not found"; }
+	}
+	
+	return $font;
+}
+
+# Get all fonts we can possibly use
+sub _get_all_fonts {
+	my $self = shift;
+	
+	my @fonts = ();
+	if ($self->{'font_file'}) {
+		@fonts = ($self->{'font_file'});
+	}
+	# Or the specified font
+	elsif ($self->{'font'} && -d $self->{'font_path'}) {
+		@fonts = ($self->{'font'});
+	}
+	# ...or use a random font
+	elsif (scalar @{$self->{'fonts'}} > 0) {
+		@fonts = @{$self->{'fonts'}};
+	}
+	
+	return @fonts;
+}
+
+# Given a number of pixels return the value in points (font size)
+sub _pixels_to_points {
+	my $self = shift;
+	my $pixels = shift;
+	
+	return $pixels * 72 / 96;
+}
+
+# Given a number of points return the value in pixels
+sub _points_to_pixels {
+	my $self = shift;
+	my $points = shift;
+	
+	return $points * 96 / 72;
 }
 
 sub _exp2 {

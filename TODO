@@ -1,3 +1,6 @@
+2/2/2012
+* A words' font size needs to be scaled to fit inside the image (long words) [done]
+
 1/30/2012
 * Allow font_path to take a list of paths
 

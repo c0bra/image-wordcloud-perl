@@ -12,7 +12,7 @@ $wc = new Image::WordCloud();
 my $num_fonts = scalar(@{ $wc->{'fonts'} });
 
 ok($num_fonts > 0,		'Found font or fonts to use with no options');
-diag('Found ' . $num_fonts . ' fonts to use');
+note('Found ' . $num_fonts . ' fonts to use');
 
 my $font_dir = File::Spec->catdir('.', 'share', 'fonts');
 ok(-d $font_dir, 			"Found font directory in dist") or diag("Font directory '$font_dir' not found");

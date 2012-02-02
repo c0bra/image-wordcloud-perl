@@ -1,5 +1,14 @@
 Revision history for Image-WordCloud
 
+0.02			2012.02.02
+
+	[BUG FIXES]
+	* Long words were overrunning the image bounds. Added _max_font_size() which
+	  tries the longest word in each font, scaling the font size down until it
+	  will fit width the image's width. (Eventually this will need to be changed
+	  to handle vertical words)
+
 0.01_01		2012.01.27
-       		First version, released on an unsuspecting world.
+
+	First version, released on an unsuspecting world.
 
