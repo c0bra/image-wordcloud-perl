@@ -188,13 +188,6 @@ sub new {
     return $self;
 }
 
-# Get a file from the dist share location
-sub _get_dist_file_option {
-	my ($opts, $option, $file) = @_;
-	
-	return;
-}
-
 =head2 words(\%words_to_use | \@words | @words_to_use | $words)
 
 Takes either a hashref, arrayref, array or string.
@@ -289,7 +282,21 @@ sub words {
 
 =head2 cloud()
 
-Make the word cloud. Returns a L<GD::Image> image object.
+Make the word cloud. Returns a L<GD::Image>.
+
+	my $gd = Image::WordCloud->new()->words(qw/some words etc/)->cloud();
+	
+	# Spit out the wordlcoud as a PNG
+	$gd->png;
+	
+	# ... or a jpeg
+	$gd->jpg;
+	
+	# Get the dimensions
+	$gd->width;
+	$gd->height;
+	
+	# Or anything else you can do with a GD::Image object
 
 =cut
 
@@ -320,7 +327,7 @@ sub cloud {
 		push @palette, $newc;
 	}
 	
-	# make the background interlaced  
+	# make the background interlaced (***TODO: why?)
   $gd->interlaced('true');
 	
 	# Array of GD::Text::Align objects that we will move around and then draw
@@ -338,7 +345,15 @@ sub cloud {
 	# For each word we have
 	my @areas = ();
 	#my @drawn_texts = ();
+	
+	# List of the bounding boxes of each text object. Each element is an arrayref
+	# containing:
+	#   1. Upper left x coordinate
+	#   2. Upper left y coordinate
+	#   3. Bounding box width
+	#   4. Bounding box height
 	my @bboxes = ();
+	
 	my $loop = 1;
 	
 	my @word_keys = sort { $self->{words}->{$b} <=> $self->{words}->{$a} } keys %{ $self->{words} };
@@ -418,13 +433,16 @@ sub cloud {
 			$y = $center_y + ($h / 4); # I haven't done the math see why dividing the height by 4 works, but it does
 			
 			# Move the image center around a little
-			$x += $self->_random_int_between($gd->width * .1 * -1, $gd->width * .1 );
-			$y += $self->_random_int_between($gd->height * .1 * -1, $gd->height * .1);
+			#$x += $self->_random_int_between($gd->width * .1 * -1, $gd->width * .1 );
+			#$y += $self->_random_int_between($gd->height * .1 * -1, $gd->height * .1);
+			
+			# Move the first word around a little, but not TOO much!
+			($x, $y) = $self->_init_coordinates($gd, $text, $x, $y);
 		}
 		else {
 			# Get a random place to draw the text
 			#   1. The text is drawn starting at its lower left corner
-			#	2. So we need to push the y value by the height of the text, but keep it less than the image height
+			#	  2. So we need to push the y value by the height of the text, but keep it less than the image height
 			#   3. Keep a padding of 5px around the edges of the image
 			#$y = $self->_random_int_between($h, $gd->height - 5);
 			#$x = $self->_random_int_between(5,  $gd->width - $w - 5);
@@ -439,8 +457,10 @@ sub cloud {
 			# Make a spiral, TODO: probably need to somehow constrain or filter points that are generated outside the image dimensions
 			my $path = Math::PlanePath::TheodorusSpiral->new;
 			
-			# Get the initial starting point
+			# Get the boundary width and height for random initial placement (which is bounds of the first (biggest) string)
 			my ($rand_bound_w, $rand_bound_h) = @{$bboxes[0]}[2,3];
+			
+			# Get the initial starting point
 			#my ($this_x, $this_y) = $path->n_to_xy(1);
 			my ($this_x, $this_y) = $self->_new_coordinates($gd, $path, 1, $rand_bound_w, $rand_bound_h);
 			
@@ -550,6 +570,48 @@ sub cloud {
 	return $gd;
 }
 
+# Given an initial starting point, move 
+sub _init_coordinates {
+	my $self = shift;
+	my ($gd, $text, $x, $y) = @_;
+	
+	croak "No X coordinate specified" if ! defined $x;
+	croak "No Y coordinate specified" if ! defined $y;
+	
+	my $fits = 0;
+	my $c = 0;
+	while (! $fits) {
+		# Re-initialize the coords
+		my $try_x = $x;
+		my $try_y = $y;
+		
+		# Move the x,y coords around a little (width 10% of the image's dimensions so we stay mostly centered)
+		$try_x += $self->_random_int_between($gd->width * .1 * -1, $gd->width * .1 );
+		$try_y += $self->_random_int_between($gd->height * .1 * -1, $gd->height * .1);
+		
+		# Make sure the new coordinates aren't outside the bounds of the image!
+		my ($newx, $newy, $newx2, $newy2) = ( $text->bounding_box($try_x, $try_y) )[6,7,2,3];
+		
+		if ($newx < 0 || $newx2 > $gd->width ||
+				$newy < 0 || $newy2 > $gd->height) {
+				
+				$fits = 0;
+		}
+		else {
+				$x = $try_x;
+				$y = $try_y;
+				
+				$fits = 1;
+		}
+		
+		# Only try 50 times
+		$c++;
+		last if $c > 50;
+	}
+	
+	return ($x, $y);
+}
+
 # Return new coordinates ($x, $y) that are no more than $bound_x or $bound_y digits away from the center of GD image $gd
 sub _new_coordinates {
 	my $self = shift;
@@ -557,7 +619,7 @@ sub _new_coordinates {
 	my ($gd, $path, $iteration, $bound_x, $bound_y) = @_;
 	
 	my ($x, $y) = map { int } $path->n_to_xy($iteration * 100); # use 'int' because it returns fractional coordinates
-					
+	
 	# Move the center of this word within 50% of the area of the first word's bounding box
 	$x += $self->_random_int_between($bound_x * -1 * .25, $bound_x * .25);
 	$y += $self->_random_int_between($bound_y * -1 * .25, $bound_y * .25);
