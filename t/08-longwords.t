@@ -11,6 +11,7 @@ my $font_dir = File::Spec->catdir('.', 'share', 'fonts');
 
 # Don't prune boring words for this test
 my $wc = new Image::WordCloud(
+	image_size   => [800, 800],
 	prune_boring => 0,
 	font_path    => $font_dir
 );

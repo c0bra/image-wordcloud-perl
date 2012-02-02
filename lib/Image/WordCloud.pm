@@ -17,7 +17,7 @@ use GD::Text::Align;
 use Color::Scheme;
 use Math::PlanePath::TheodorusSpiral;
 
-our $VERSION = '0.01';
+our $VERSION = '0.02_01';
 
 
 =head1 NAME
