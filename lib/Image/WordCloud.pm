@@ -131,8 +131,19 @@ sub new {
 				carp sprintf "Specified font path '%s' not found", $opts{'font_path'};
 			}
 		}
-		# Otherwise, find the font path with File::ShareDir
-		else {
+		
+		# Otherwise, try using ./share/fonts (so testing can be done)
+		if (! $opts{'font_path'}) {
+			my $local_font_path = File::Spec->catdir(".", "share", "fonts");
+			unless (-d $local_font_path) {
+				#carp sprintf "Local font path '%s' not found", $local_font_path;
+			}
+			
+			$opts{'font_path'} = $local_font_path;
+		}
+		
+		# If we still haven't found a font path, find the font path with File::ShareDir
+		if (! $opts{'font_path'}) {
 			my $font_path;
 			eval {
 				$font_path = File::Spec->catdir(dist_dir('Image-WordCloud'), "fonts");
@@ -143,16 +154,6 @@ sub new {
 			else {
 				$opts{'font_path'} = $font_path;
 			}
-		}
-		
-		# If we still haven't found a font path, try using ./share/fonts
-		if (! $opts{'font_path'}) {
-			my $local_font_path = File::Spec->catdir(".", "share", "fonts");
-			unless (-d $local_font_path) {
-				#carp sprintf "Local font path '%s' not found", $local_font_path;
-			}
-			
-			$opts{'font_path'} = $local_font_path;
 		}
 		
     my $class = ref( $proto ) || $proto;
@@ -557,7 +558,9 @@ sub cloud {
 			$y = $this_y;
 		}
 		
-		my @bounding = $text->draw($x, $y, 0);		
+		print "WIDTH: " . $text->get('width') . "\n" if $ENV{DEBUG};
+		
+		my @bounding = $text->draw($x, $y, 0);
 		#$self->_stroke_bbox($gd, undef, @bounding);
 		
 		my @rect = ($bounding[6], $bounding[7], $bounding[2] - $bounding[6], $bounding[3] - $bounding[7]);
@@ -654,10 +657,16 @@ sub _max_font_size {
 	# Image width and heigth
 	my ($w, $h) = $self->{image_size}->[0,1];
 	
+	# Get the word scaling factors
+	my $scalings = $self->_word_scalings();
+	
 	# Get the longest word
 	my $max_word = "";
-	foreach my $word (keys %{ $self->{words} }) {
-		$max_word = $word if length($word) > length($max_word);
+	foreach my $word (keys %{ $self->words() }) {
+		#$max_word = $word if length($word) > length($max_word);
+		if (! $max_word) { $max_word = $word; next; } # init $max_word
+		
+		my $max_word = $word if length($word) * $scalings->{ $word } > length($max_word) * $scalings->{ $max_word };
 	}
 	
 	# Create the text object
@@ -670,13 +679,17 @@ sub _max_font_size {
 	while ($fontsize > 0) {
 		my $toobig = 0;
 		
+		printf "Trying fontsize: %s\n", $fontsize * $scalings->{ $max_word } if $ENV{DEBUG};
+		
 		# Go through every font
 		foreach my $font (@fonts) {
 			# Set the font on this text object
-			$t->set_font($font, $fontsize);
+			$t->set_font($font, $fontsize * $scalings->{ $max_word });
 			
 			# The text box is wider than the image
 			if ($t->get('width') > $w) {
+				printf "Max word %s is too big in %s (width is %s)\n", $max_word, $font, $t->get('width') if $ENV{DEBUG};
+				
 				$toobig = 1;
 				last;
 			}
@@ -693,7 +706,21 @@ sub _max_font_size {
 # Intial maximum font size is the 1/4 the heigth of the image
 sub _init_max_font_size {
 	my $self = shift;
+	
 	return $self->_pixels_to_points($self->{image_size}->[1] * .25);
+}
+
+# Return a hashref of words with their associated scaling
+sub _word_scalings {
+	my $self = shift;
+	
+	# Get the words sorted by their count
+	my @word_keys = sort { $self->{words}->{$b} <=> $self->{words}->{$a} } keys %{ $self->words() };
+	
+	my $sloop = 0;
+	my %word_scalings = map { $sloop++; $_ => (1.75 / $sloop) } @word_keys;
+	
+	return \%word_scalings;
 }
 
 # Return a single font

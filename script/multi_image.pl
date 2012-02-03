@@ -3,6 +3,7 @@
 use strict;
 use warnings;
 
+use feature qw(say);
 use Image::WordCloud;
 use File::Slurp;
 use Data::Dumper;
@@ -18,6 +19,11 @@ my $wc = new Image::WordCloud(
 	image_size => [600,600],
 	word_count => 100
 );
+
+$wc = new Image::WordCloud();
+my $num_fonts = scalar(@{ $wc->{'fonts'} });
+
+say 'Found ' . $num_fonts . ' fonts to use';
 
 $wc->words(\@words);
 

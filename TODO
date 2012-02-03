@@ -2,6 +2,11 @@
 * Add untaint options to validate() for file and dir paths
 * Put test scripts in proper order. Util methods needs to be
   tested before the methods they're used in.
+* Add an optional "color_guard" option (exact name to be decided)
+  to new() that will prevent colors/hues from being used that will
+  be very close to the background color and cause it to look bad.
+  Like right now with the background of 40,40,40 dark blues and
+  purples don't look good.
 
 2/2/2012
 * A words' font size needs to be scaled to fit inside the image (long words) [done]
