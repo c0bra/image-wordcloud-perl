@@ -773,35 +773,6 @@ sub _random_colors {
 	return @rand_colors;
 }
 
-# Convert HSV colors to RGB, in a pretty way
-# Stolen from: http://martin.ankerl.com/2009/12/09/how-to-create-random-colors-programmatically/
-sub _hsv_to_rgb {
-	my $self = shift;
-	
-	my ($h, $s, $v) = @_;
-	
-	my $h_i = int($h * 6);
-	my $f = $h * 6 - $h_i;
-	my $p = $v * (1 - $s);
-	my $q = $v * (1 - $f * $s);
-	my $t = $v * (1 - (1 - $f) * $s);
-	
-	my ($r, $g, $b);
-	
-	($r, $g, $b) = ($v, $t, $p) if $h_i == 0;
-	($r, $g, $b) = ($q, $v, $p) if $h_i == 1;
-	($r, $g, $b) = ($p, $v, $t) if $h_i == 2;
-	($r, $g, $b) = ($p, $q, $v) if $h_i == 3;
-	($r, $g, $b) = ($t, $p, $v) if $h_i == 4;
-	($r, $g, $b) = ($v, $p, $q) if $h_i == 5;
-	
-	return (
-		int($r * 256),
-		int($g * 256),
-		int($b * 256)
-	);
-}
-
 # Convert a hexadecimal color to a list of rgb values
 sub _hex2rgb {
 	my $self = shift;
