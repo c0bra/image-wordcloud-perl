@@ -11,6 +11,7 @@ resources
 
 test_requires 'Test::More';
 test_requires 'Test::Exception';
+test_requires 'Test::Warn';
 
 requires 'Params::Validate';
 requires 'List::Util';
