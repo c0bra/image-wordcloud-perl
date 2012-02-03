@@ -753,16 +753,6 @@ sub _points_to_pixels {
 	return $points * 96 / 72;
 }
 
-sub _exp2 {
-	my $n = shift;
-	return exp($n) / exp(2);
-}
-
-sub _log2 {
-	my $n = shift;
-	return log($n) / log(2);
-}
-
 sub _normalize_num {
 	my $self = shift;
 	my ($num, $max, $min) = @_;
