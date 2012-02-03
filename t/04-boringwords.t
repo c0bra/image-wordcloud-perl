@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 
-use Test::More tests => 3;
+use Test::More tests => 6;
 use Test::Exception;
 use Image::WordCloud;
 
@@ -25,6 +25,17 @@ $wc->words(\%wordhash);
 is(scalar keys %{ $wc->{words} }, 4, 'Pruned right number of words');
 
 
-$wc = Image::WordCloud->new()->;
-$wc
-$wc->_prune_stop_words
+@words = qw/foo bar baz/;
+%wordhash = map { $_=> 1 } @words;
+
+$wc = Image::WordCloud->new()->add_stop_words(@words);
+$wc->_prune_stop_words(\%wordhash);
+
+is(scalar keys(%{ $wc->{words} }), 0, "Passing hashref of words straight to _prune_stop_words");
+
+$wc = Image::WordCloud->new()->words(@words)->add_stop_words(@words);
+$wc->_prune_stop_words();
+
+is(scalar keys(%{ $wc->{words} }), 0, "Running _prune_stop_words with no argument");
+
+dies_ok(sub { $wc->_prune_stop_words(my $foo) }, "_prune_stop_words requires optional first argument to be a hashref");
