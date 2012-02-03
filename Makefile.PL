@@ -2,8 +2,12 @@ use inc::Module::Install;
 
 name     'Image-WordCloud';
 all_from 'lib/Image/WordCloud.pm';
-author   q{Brian Hann <brian.hann@gmail.com>};
+author   q{Brian Hann <bhann@cpan.org>};
 license  'perl';
+
+resources
+	bugtracker 'https://github.com/c0bra/image-wordcloud-perl/issues';
+	repository 'https://github.com/c0bra/image-wordcloud-perl';
 
 test_requires 'Test::More';
 test_requires 'Test::Exception';
