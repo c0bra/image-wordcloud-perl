@@ -120,7 +120,7 @@ sub new {
 		# Make sure the font file exists if it is specified
 		if ($opts{'font_file'}) {
 			unless (-f $opts{'font_file'}) {
-				carp sprintf "Font file '%s' not found", $opts{'font_file'};
+				carp sprintf "Specified font file '%s' not found", $opts{'font_file'};
 			}
 		}
 		
