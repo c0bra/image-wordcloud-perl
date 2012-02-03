@@ -1,6 +1,7 @@
 #!perl -T
 
-use Test::More tests => 6;
+use Test::More tests => 8;
+use Test::Warn;
 use File::Spec;
 use File::Find::Rule;
 use Image::WordCloud;
@@ -20,6 +21,14 @@ ok(-d $font_dir, 			"Found font directory in dist") or diag("Font directory '$fo
 $wc = new Image::WordCloud( font_path => $font_dir );
 is($wc->{'font_path'}, $font_dir,	"'font_path' being set right");
 
+warning_like(
+	sub { $wc = new Image::WordCloud( font_path => "blarg" ) },
+	[
+		qr/Specified font path .+? not found/,
+		qr/No usable font path or font file found, only fonts available will be from libgd, which suck/,
+	],
+	"Missing font directory produces warning");
+
 my @font_files = File::Find::Rule->new()
 	->extras({ untaint => 1})
 	->file()
@@ -31,3 +40,5 @@ ok(-f $font_file,			"Found a font file in the font directory") or diag("Returned
 
 $wc = new Image::WordCloud(font_file => $font_file);
 is($wc->{'font_file'}, $font_file, 	"Font file option is being set");
+
+warning_like(sub { $wc = new Image::WordCloud( font_file => "blarg" ) }, qr/Specified font file .+? not found/, "Missing font file produces warning");
