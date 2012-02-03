@@ -107,13 +107,13 @@ sub new {
     my $proto = shift;
 		
     my %opts = validate(@_, {
-    	  image_size     => { type => ARRAYREF | UNDEF, optional => 1, default => [400, 400] },
-        word_count     => { type => SCALAR | UNDEF,   optional => 1, default => 70 },
-        prune_boring   => { type => SCALAR | UNDEF,   optional => 1, default => 1 },
-        font           => { type => SCALAR | UNDEF,   optional => 1 },
-        font_file      => { type => SCALAR | UNDEF,   optional => 1 },
-        font_path      => { type => SCALAR | UNDEF,   optional => 1 },
-        background     => { type => ARRAYREF,         optional => 1, default => [40, 40, 40] },
+			image_size     => { type => ARRAYREF | UNDEF, optional => 1, default => [400, 400] },
+			word_count     => { type => SCALAR | UNDEF,   optional => 1, default => 70 },
+			prune_boring   => { type => SCALAR | UNDEF,   optional => 1, default => 1 },
+			font           => { type => SCALAR | UNDEF,   optional => 1 },
+			font_file      => { type => SCALAR | UNDEF,   optional => 1 },
+			font_path      => { type => SCALAR | UNDEF,   optional => 1 },
+			background     => { type => ARRAYREF,         optional => 1, default => [40, 40, 40] },
     });
     
     # ***TODO: Figure out how many words to use based on image size?
@@ -157,14 +157,14 @@ sub new {
 		
     my $class = ref( $proto ) || $proto;
     my $self = { #Will need to allow for params passed to constructor
-			words          => {},
-			image_size     => $opts{'image_size'},
-      word_count     => $opts{'word_count'},
-      prune_boring   => $opts{'prune_boring'},
-      font           => $opts{'font'}      || "",
-      font_path      => $opts{'font_path'} || "",
-      font_file      => $opts{'font_file'} || "",
-      background		 => $opts{'background'},
+			words					=> {},
+			image_size		=> $opts{'image_size'},
+			word_count		=> $opts{'word_count'},
+			prune_boring	=> $opts{'prune_boring'},
+			font					=> $opts{'font'}      || "",
+			font_path			=> $opts{'font_path'} || "",
+			font_file			=> $opts{'font_file'} || "",
+			background		=> $opts{'background'},
     };
     bless($self, $class);
     
@@ -178,11 +178,12 @@ sub new {
 		}
 		# Otherwise if no font_file was specified and we have a font path, read in all the fonts from font_path
 		elsif (! -f $self->{'font_file'} && -d $self->{'font_path'}) {
-				my @fonts = File::Find::Rule->new()
-					->extras({ untaint => 1})
-					->file()
-					->name('*.ttf')
-					->in( $self->{'font_path'} );
+			my @fonts = File::Find::Rule->new()
+										->extras({ untaint => 1})
+										->file()
+										->name('*.ttf')
+										->in( $self->{'font_path'} );
+			
 			$self->{fonts} = \@fonts;
 		}
 
@@ -219,8 +220,8 @@ sub words {
   if (scalar(@_) > 1) {
   	my @words = @_;
   	
-  	# Strip non-word characters, lc() each word and build the counts
-  	foreach my $word (map { lc } @words) {
+		# Strip non-word characters, lc() each word and build the counts
+		foreach my $word (map { lc } @words) {
 			$word =~ s/\W//o;
 			$words{ $word }++;
 		}
