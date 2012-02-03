@@ -1,7 +1,8 @@
+2/3/2012
+* Add untaint options to validate() for file and dir paths
+
 2/2/2012
 * A words' font size needs to be scaled to fit inside the image (long words) [done]
-* But now it seems the fonts are too small. Need to try on with a full forum
-  user's words on an 800x800 image
 
 1/30/2012
 * Allow font_path to take a list of paths
