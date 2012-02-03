@@ -3,8 +3,8 @@ package Image::WordCloud::StopWords::EN;
 use strict;
 use warnings;
 
-require Exporter;
-our @ISA = qw(Exporter);
+use base qw(Exporter);
+
 our @EXPORT_OK = qw( %STOP_WORDS );
 
 our %STOP_WORDS = map { $_ => 1 } qw(
