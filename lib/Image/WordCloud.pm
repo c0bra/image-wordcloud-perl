@@ -753,13 +753,6 @@ sub _points_to_pixels {
 	return $points * 96 / 72;
 }
 
-sub _normalize_num {
-	my $self = shift;
-	my ($num, $max, $min) = @_;
-	
-	return ($num - $min) / ($max - $min);
-}
-
 # Return a list of random colors as an array of RGB arrayrefs
 # ( [25,30,60], [2,204,300] ), etc.
 sub _random_colors {
