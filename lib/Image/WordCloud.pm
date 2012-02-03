@@ -43,7 +43,8 @@ Image::WordCloud - Create word cloud images
 		print $fh $gd->png();
 	close($fh);
 	
-	# See examples/gettysburg.png for how the created image looks. script/gettysburg.pl will create it
+	# See examples/gettysburg.png for how the created image looks.
+	# script/gettysburg.pl will create it
 	
 	# The calls can also be chained like so:
 	my $text = read_file('script/gettysburg.txt');
@@ -824,6 +825,16 @@ sub add_stop_words {
 }
 
 # Detect a collision between two rectangles
+#   Arguments are:
+#		1: First rectangle's upper left X coord
+#		2: First rectangle's upper left Y coord
+#		3: First rectangle's width
+#		4: First rectangle's height
+#
+#		1: Second rectangle's upper left X coord
+#		2: Second rectangle's upper left Y coord
+#		3: Second rectangle's width
+#		4: Second rectangle's height
 sub _detect_collision {
 	my $self = shift;
 	
@@ -868,18 +879,15 @@ sub _random_int_between {
 	return $min + int rand(1 + $max - $min);
 }
 
+
 =head1 AUTHOR
 
 Brian Hann, C<< <bhann at cpan.org> >>
 
 =head1 BUGS
 
-Please report any bugs or feature requests to C<bug-image-wordcloud at rt.cpan.org>, or through
-the web interface at L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Image-WordCloud>.  I will be notified, and then you'll
-automatically be notified of progress on your bug as I make changes.
-
-
-
+Please report any bugs or feature requests here L<https://github.com/c0bra/image-wordcloud-perl/issues>. 
+I will be notified, and then you'll automatically be notified of progress on your bug as I make changes.
 
 =head1 SUPPORT
 
@@ -892,9 +900,9 @@ You can also look for information at:
 
 =over 4
 
-=item * RT: CPAN's request tracker (report bugs here)
+=item * Github Issues Tracker (report bugs here)
 
-L<http://rt.cpan.org/NoAuth/Bugs.html?Dist=Image-WordCloud>
+L<https://github.com/c0bra/image-wordcloud-perl/issues>
 
 =item * AnnoCPAN: Annotated CPAN documentation
 
@@ -907,6 +915,10 @@ L<http://cpanratings.perl.org/d/Image-WordCloud>
 =item * Search CPAN
 
 L<http://search.cpan.org/dist/Image-WordCloud/>
+
+=item * MetaCPAN
+
+L<https://metacpan.org/module/Image::WordCloud>
 
 =back
 
