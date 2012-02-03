@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 
-use Test::More tests => 8;
+use Test::More tests => 10;
 use Test::Warn;
 use File::Spec;
 use File::Find::Rule;
@@ -9,6 +9,11 @@ use Image::WordCloud;
 
 my $wc = new Image::WordCloud(font => 'arial');
 is($wc->{'font'}, 'arial', "'font' option being set right");
+
+# Make sure the font accessors return something
+isnt($wc->_get_font(), 			undef, "_get_font() returns a value");
+isnt($wc->_get_all_fonts(), undef, "_get_all_fonts() returns a value");
+
 
 $wc = new Image::WordCloud();
 my $num_fonts = scalar(@{ $wc->{'fonts'} });
