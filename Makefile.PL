@@ -10,7 +10,7 @@ resources
 	repository 'https://github.com/c0bra/image-wordcloud-perl';
 
 test_requires 'Test::More';
-test_requires 'Test::Exception';
+test_requires 'Test::Fatal';
 test_requires 'Test::Warn';
 
 requires 'Params::Validate';
