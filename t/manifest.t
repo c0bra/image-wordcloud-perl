@@ -1,7 +1,6 @@
-#!perl -T
-
 use strict;
 use warnings;
+
 use Test::More;
 
 unless ( $ENV{RELEASE_TESTING} ) {
