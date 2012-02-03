@@ -1,5 +1,7 @@
 2/3/2012
 * Add untaint options to validate() for file and dir paths
+* Put test scripts in proper order. Util methods needs to be
+  tested before the methods they're used in.
 
 2/2/2012
 * A words' font size needs to be scaled to fit inside the image (long words) [done]
