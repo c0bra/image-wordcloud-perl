@@ -616,7 +616,15 @@ sub _init_coordinates {
 sub _new_coordinates {
 	my $self = shift;
 	
-	my ($gd, $path, $iteration, $bound_x, $bound_y) = @_;
+	my @opts = validate_pos(@_,
+  	{ isa => 'GD::Image' },
+  	{ isa => 'Math::PlanePath::TheodorusSpiral' },
+  	{ type => SCALAR, regex => qr/^[-+]?\d+$/, },
+  	{ type => SCALAR, regex => qr/^\d+|\d+\.\d+$/, },
+  	{ type => SCALAR, regex => qr/^\d+|\d+\.\d+$/, },
+  );
+	
+	my ($gd, $path, $iteration, $bound_x, $bound_y) = @opts;
 	
 	my ($x, $y) = map { int } $path->n_to_xy($iteration * 100); # use 'int' because it returns fractional coordinates
 	
