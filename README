@@ -19,7 +19,8 @@ SYNOPSIS
                     print $fh $gd->png();
             close($fh);
         
-            # See examples/gettysburg.png for how the created image looks. script/gettysburg.pl will create it
+            # See examples/gettysburg.png for how the created image looks.
+            # script/gettysburg.pl will create it
         
             # The calls can also be chained like so:
             my $text = read_file('script/gettysburg.txt');
@@ -72,7 +73,7 @@ FUNCTIONS
         Takes an arrayref defining the background color to use. Defaults to
         [40, 40, 40]
 
-  words(\%words_to_use | \@words | @words_to_use, $words)
+  words(\%words_to_use | \@words | @words_to_use | $words)
     Takes either a hashref, arrayref, array or string.
 
     If the argument is a hashref, keys are the words, values are their
@@ -83,20 +84,33 @@ FUNCTIONS
     to remove non-word characters and turn them lower-case.
 
   cloud()
-    Make the word cloud. Returns a GD::Image image object.
+    Make the word cloud. Returns a GD::Image.
+
+            my $gd = Image::WordCloud->new()->words(qw/some words etc/)->cloud();
+        
+            # Spit out the wordlcoud as a PNG
+            $gd->png;
+        
+            # ... or a jpeg
+            $gd->jpg;
+        
+            # Get the dimensions
+            $gd->width;
+            $gd->height;
+        
+            # Or anything else you can do with a GD::Image object
 
   add_stop_words(@words)
     Add new stop words onto the list. Automatically puts words in lowercase.
 
 AUTHOR
-    Brian Hann, `<brian.hann at gmail.com>'
+    Brian Hann, `<bhann at cpan.org>'
 
 BUGS
-    Please report any bugs or feature requests to `bug-image-wordcloud at
-    rt.cpan.org', or through the web interface at
-    http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Image-WordCloud. I will
-    be notified, and then you'll automatically be notified of progress on
-    your bug as I make changes.
+    Please report any bugs or feature requests here
+    https://github.com/c0bra/image-wordcloud-perl/issues. I will be
+    notified, and then you'll automatically be notified of progress on your
+    bug as I make changes.
 
 SUPPORT
     You can find documentation for this module with the perldoc command.
@@ -105,8 +119,8 @@ SUPPORT
 
     You can also look for information at:
 
-    * RT: CPAN's request tracker (report bugs here)
-        http://rt.cpan.org/NoAuth/Bugs.html?Dist=Image-WordCloud
+    * Github Issues Tracker (report bugs here)
+        https://github.com/c0bra/image-wordcloud-perl/issues
 
     * AnnoCPAN: Annotated CPAN documentation
         http://annocpan.org/dist/Image-WordCloud
@@ -116,6 +130,9 @@ SUPPORT
 
     * Search CPAN
         http://search.cpan.org/dist/Image-WordCloud/
+
+    * MetaCPAN
+        https://metacpan.org/module/Image::WordCloud
 
 LICENSE AND COPYRIGHT
     Copyright 2012 Brian Hann.
