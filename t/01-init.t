@@ -35,4 +35,3 @@ is ($wc->{'font_file'}, $0, 								"'font_file' being set right");
 
 #my $stop_word_file = File::Spec->catfile('.', 'share', 
 #is($wc->{'stop_word_file'}, 0,							"prune_boring being set right");
-
