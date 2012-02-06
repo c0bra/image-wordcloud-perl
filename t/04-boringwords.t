@@ -2,7 +2,7 @@ use strict;
 use warnings;
 
 use Test::More tests => 6;
-use Test::Exception;
+use Test::Fatal;
 use Image::WordCloud;
 
 BEGIN {
@@ -38,4 +38,8 @@ $wc->_prune_stop_words();
 
 is(scalar keys(%{ $wc->{words} }), 0, "Running _prune_stop_words with no argument");
 
-dies_ok(sub { $wc->_prune_stop_words(my $foo) }, "_prune_stop_words requires optional first argument to be a hashref");
+isnt(
+	exception {$wc->_prune_stop_words(my $foo) },
+	undef,
+	"_prune_stop_words requires optional first argument to be a hashref"
+);

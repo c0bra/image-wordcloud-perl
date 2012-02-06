@@ -2,7 +2,6 @@ use strict;
 use warnings;
 
 use Test::More tests => 14;
-use Test::Exception;
 use Image::WordCloud;
 
 # Don't prune boring words for this test

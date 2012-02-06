@@ -2,7 +2,6 @@ use strict;
 use warnings;
 
 use Test::More;
-use Test::Exception;
 use Image::WordCloud;
 
 #plan skip_all => "No palette tests at this time";

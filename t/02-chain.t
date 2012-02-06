@@ -2,7 +2,6 @@ use strict;
 use warnings;
 
 use Test::More tests => 2;
-use Test::Exception;
 use Image::WordCloud;
 
 my $gd = Image::WordCloud->new()
