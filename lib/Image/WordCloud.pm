@@ -97,6 +97,21 @@ directory will be used via L<File::ShareDir>. Currently this module comes bundle
 
 Takes an arrayref defining the background color to use. Defaults to [40, 40, 40]
 
+=item * border_padding => <$pixels | $percent>
+
+Padding to leave clear around the edges of the image, either in pixels or a percent with '%' sign. Defaults to '5%'
+
+	my $wc = Image::WordCloud->new(border_padding => 20);
+	my $wc = Image::WordCloud->new(border_padding => '25%');
+
+Please note that this affects the speed with which this module can fit words into the image. In my tests on
+the text of the Declaration of Independence, bumping the percentage by 5% increments progressed like so:
+
+	0%:  15.25s
+	5%:  21.50s
+	10%: 30.00s
+	15%: 63.6s avg
+
 =back
 
 =cut
@@ -107,13 +122,14 @@ sub new {
     my $proto = shift;
 		
     my %opts = validate(@_, {
-			image_size     => { type => ARRAYREF | UNDEF, optional => 1, default => [400, 400] },
-			word_count     => { type => SCALAR | UNDEF,   optional => 1, default => 70 },
-			prune_boring   => { type => SCALAR | UNDEF,   optional => 1, default => 1 },
-			font           => { type => SCALAR | UNDEF,   optional => 1 },
-			font_file      => { type => SCALAR | UNDEF,   optional => 1 },
-			font_path      => { type => SCALAR | UNDEF,   optional => 1 },
-			background     => { type => ARRAYREF,         optional => 1, default => [40, 40, 40] },
+			image_size     => { type => ARRAYREF | UNDEF, 		optional => 1, default => [400, 400] },
+			word_count     => { type => SCALAR | UNDEF,   		optional => 1, default => 70 },
+			prune_boring   => { type => SCALAR | UNDEF,   		optional => 1, default => 1 },
+			font           => { type => SCALAR | UNDEF,   		optional => 1 },
+			font_file      => { type => SCALAR | UNDEF,   		optional => 1 },
+			font_path      => { type => SCALAR | UNDEF,   		optional => 1 },
+			background     => { type => ARRAYREF,         		optional => 1, default => [40, 40, 40] },
+			border_padding => { type => SCALAR, 							optional => 1, regex => qr/^\d+\%?$/, default => '5%' },
     });
     
     # ***TODO: Figure out how many words to use based on image size?
@@ -158,14 +174,15 @@ sub new {
 		
     my $class = ref( $proto ) || $proto;
     my $self = { #Will need to allow for params passed to constructor
-			words					=> {},
-			image_size		=> $opts{'image_size'},
-			word_count		=> $opts{'word_count'},
-			prune_boring	=> $opts{'prune_boring'},
-			font					=> $opts{'font'}      || "",
-			font_path			=> $opts{'font_path'} || "",
-			font_file			=> $opts{'font_file'} || "",
-			background		=> $opts{'background'},
+			words					 => {},
+			image_size		 => $opts{'image_size'},
+			word_count		 => $opts{'word_count'},
+			prune_boring	 => $opts{'prune_boring'},
+			font					 => $opts{'font'}      || "",
+			font_path			 => $opts{'font_path'} || "",
+			font_file			 => $opts{'font_file'} || "",
+			background		 => $opts{'background'},
+			border_padding => $opts{'border_padding'},
     };
     bless($self, $class);
     
@@ -245,7 +262,7 @@ sub words {
 		# Argument is a scalar, assume it's a string of words
 		else {
 			my $words = $arg1;
-			while ($words =~ /(?<!<)\b([\w\-']+)\b(?!>)/g) { #' <-- so UltraEdit doesnt fubar syntax highliting
+			while ($words =~ /(?<!<)\b([\w\-']+)\b(?!>)/go) { #' <-- so UltraEdit doesnt fubar syntax highliting
 				my $word = lc($1);
 				$word =~ s/\W//o;
 				$words{ $word }++;
@@ -314,7 +331,7 @@ sub cloud {
 	}
 	
 	# Create the image object 
-	my $gd = GD::Image->new($self->{image_size}->[0], $self->{image_size}->[1]); # Adding the 3rd argument (for truecolor) borks the background, it defaults to black.
+	my $gd = GD::Image->new($self->width, $self->height); # Adding the 3rd argument (for truecolor) borks the background, it defaults to black.
 	
 	# Center coordinates of this iamge
 	my $center_x = $gd->width  / 2;
@@ -338,10 +355,12 @@ sub cloud {
 	# Array of GD::Text::Align objects that we will move around and then draw
 	my @texts = ();
 	
-	# Max font size in points (25% of image height)
-	#my $max_points = $self->_pixels_to_points($gd->height) * .25; # Convert height in pixels to points, then take 25% of that number
+	# Get the bounds of the image
+	my ($left_bound, $top_bound, $right_bound, $bottom_bound) = $self->_image_bounds();
+	
+	# Max an min font sizes in points
 	my $max_points = $self->_max_font_size();
-	my $min_points = $self->_pixels_to_points($gd->height) * 0.0175; # 0.02625; 
+	my $min_points = $self->_pixels_to_points(($bottom_bound - $top_bound) * 0.0175); # 0.02625;
 	
 	# Scaling modifier for font sizes
 	my $max_count = $self->{max_count};
@@ -361,7 +380,14 @@ sub cloud {
 	
 	my $loop = 1;
 	
+	# Get a list of words sorted by frequency
 	my @word_keys = sort { $self->{words}->{$b} <=> $self->{words}->{$a} } keys %{ $self->{words} };
+	
+	# Get the word scaling factors (higher frequency == bigger size
+	my $scalings = $self->_word_scalings();
+	
+	# And then create the font sizes based on the scaling * the maximum font size
+	my %word_sizes = map { $_ => $scalings->{$_} * $max_points } @word_keys;
 	
 	# Get the font size for each word using the Fibonacci sequence
 #	my %word_sizes = ();
@@ -383,9 +409,6 @@ sub cloud {
 #		
 #		$sloop--;
 #	}
-
-	my $sloop = 0;
-	my %word_sizes = map { $sloop++; $_ => (1.75 / $sloop * $max_points) } @word_keys;
 	
 	foreach my $word ( shift @word_keys, shuffle @word_keys ) {
 		my $count = $self->{words}->{$word};
@@ -534,8 +557,8 @@ sub cloud {
 					
 					my ($newx, $newy, $newx2, $newy2) = ( $text->bounding_box($this_x, $this_y) )[6,7,2,3];
 					
-					if ($newx < 0 || $newx2 > $gd->width ||
-							$newy < 0 || $newy2 > $gd->height) {
+					if ($newx < $left_bound || $newx2 > $right_bound ||
+							$newy < $top_bound  || $newy2 > $bottom_bound) {
 								
 							#carp sprintf "New coordinates outside of image: (%s, %s), (%s, %s)", $newx, $newy, $newx2, $newy2;
 							$col_iter++;
@@ -580,6 +603,40 @@ sub cloud {
 	return $gd;
 }
 
+# Return the bounds of the image
+sub _image_bounds {
+	my $self = shift;
+	
+	my ($left_bound, $top_bound, $right_bound, $bottom_bound);
+	
+	# Make the boundaries for the words
+	my $pad = $self->{'border_padding'};
+	
+	# Handle zero-padding
+	if ($pad =~ /^0\%?$/) {
+		return (0, 0, $self->width, $self->height);
+	}
+	
+	# Pad width a percentage of the image size
+	if ($pad =~ /^\d+\%$/) {
+		my ($percentage) = $pad =~ /(\d+)/;
+		$percentage = $percentage / 100;
+		
+		$left_bound  = 0 + $self->width  * $percentage;
+		$top_bound   = 0 + $self->height * $percentage;
+		$right_bound  = $self->width -  $self->width  * $percentage;
+		$bottom_bound = $self->height - $self->height * $percentage;
+	}
+	else {
+		$left_bound  = 0 + $self->{'border_padding'};
+		$top_bound   = 0 + $self->{'border_padding'};
+		$right_bound  = $self->width  - $self->{'border_padding'};
+		$bottom_bound = $self->height - $self->{'border_padding'};
+	}
+	
+	return ($left_bound, $top_bound, $right_bound, $bottom_bound);
+}
+
 # Given an initial starting point, move 
 sub _init_coordinates {
 	my $self = shift;
@@ -587,6 +644,9 @@ sub _init_coordinates {
 	
 	croak "No X coordinate specified" if ! defined $x;
 	croak "No Y coordinate specified" if ! defined $y;
+	
+	# Make the boundaries for the words
+	my ($left_bound, $top_bound, $right_bound, $bottom_bound) = $self->_image_bounds();
 	
 	my $fits = 0;
 	my $c = 0;
@@ -602,8 +662,8 @@ sub _init_coordinates {
 		# Make sure the new coordinates aren't outside the bounds of the image!
 		my ($newx, $newy, $newx2, $newy2) = ( $text->bounding_box($try_x, $try_y) )[6,7,2,3];
 		
-		if ($newx < 0 || $newx2 > $gd->width ||
-				$newy < 0 || $newy2 > $gd->height) {
+		if ($newx < $left_bound || $newx2 > $right_bound ||
+				$newy < $top_bound  || $newy2 > $bottom_bound) {
 				
 				$fits = 0;
 		}
@@ -616,7 +676,11 @@ sub _init_coordinates {
 		
 		# Only try 50 times
 		$c++;
-		last if $c > 50;
+		
+		if ($c > 50) {
+			#carp "Tried over 50 times to fit a word";
+			last;
+		}
 	}
 	
 	return ($x, $y);
@@ -633,6 +697,8 @@ sub _new_coordinates {
   	{ type => SCALAR, regex => qr/^\d+|\d+\.\d+$/, },
   	{ type => SCALAR, regex => qr/^\d+|\d+\.\d+$/, },
   );
+  
+  #my @opts = ();
 	
 	my ($gd, $path, $iteration, $bound_x, $bound_y) = @opts;
 	
@@ -661,7 +727,10 @@ sub _max_font_size {
 	my $fontsize = $init_fontsize;
 	
 	# Image width and heigth
-	my ($w, $h) = $self->{image_size}->[0,1];
+	#my ($w, $h) = ($self->width, $self->height);
+	
+	# Get the image bounds
+	my ($left_bound, $top_bound, $right_bound, $bottom_bound) = $self->_image_bounds();
 	
 	# Get the word scaling factors
 	my $scalings = $self->_word_scalings();
@@ -705,7 +774,7 @@ sub _max_font_size {
 			#printf "Width is %s (max $w) at size %s in font %s\n", $t->get('width'), $tryfontsize, $font;
 			
 			# The text box is wider than the image in this font, don't check the other fonts
-			if ($t->get('width') > $w) {
+			if ($t->get('width') > $right_bound - $left_bound) {
 				$toobig = 1;
 				last;
 			}
@@ -729,11 +798,11 @@ sub _max_font_size {
 	return $fontsize_with_scaling;
 }
 
-# Intial maximum font size is the 1/4 the heigth of the image
+# Initial maximum font size is the 1/4 the heigth of the image
 sub _init_max_font_size {
 	my $self = shift;
 	
-	return $self->_pixels_to_points($self->{image_size}->[1] * .25);
+	return $self->_pixels_to_points($self->width * .25);
 }
 
 # Return a hashref of words with their associated scaling
@@ -814,9 +883,9 @@ sub _random_colors {
 	my $self = shift;
 	
 	my %opts = validate(@_, {
-    	  hue       => { type => SCALAR, optional => 1, default => rand(359)  },
-    	  scheme    => { type => SCALAR, optional => 1, default => 'analogic' },
-    	  variation => { type => SCALAR, optional => 1, default => 'default'  },
+		hue       => { type => SCALAR, optional => 1, default => rand(359)  },
+		scheme    => { type => SCALAR, optional => 1, default => 'analogic' },
+		variation => { type => SCALAR, optional => 1, default => 'default'  },
   });
 	
 	my @rand_colors = map { [$self->_hex2rgb($_)] } Color::Scheme->new
@@ -824,7 +893,7 @@ sub _random_colors {
 		->scheme( $opts{'scheme'} )
 		->variation( $opts{'variation'} )
 		->colors();
-		
+	
 	return @rand_colors;
 }
 
@@ -933,6 +1002,23 @@ sub _random_int_between {
 	return $min + int rand(1 + $max - $min);
 }
 
+=head2 width()
+
+Return wordcloud image width
+
+=cut
+sub width {
+	return shift->{image_size}->[0];
+}
+
+=head2 height()
+
+Return wordcloud image height
+
+=cut
+sub height {
+	return shift->{image_size}->[1];
+}
 
 =head1 AUTHOR
 
