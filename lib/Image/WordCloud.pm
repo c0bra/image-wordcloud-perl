@@ -652,6 +652,8 @@ sub _new_coordinates {
 sub _max_font_size {
 	my $self = shift;
 	
+	# If we already have a max font size and the words we are using haven't changed,
+	#   return the saved max font size
 	return $self->{max_font_size} if $self->{max_font_size} && ! $self->{words_changed};
 	
 	# Font size we'll return (start with 25% of the image height);
@@ -674,7 +676,7 @@ sub _max_font_size {
 		}
 	}
 	
-	printf "Using max word %s\n", $max_word;
+	#printf "Using max word %s\n", $max_word;
 	
 	# Create the text object
 	my $t = new GD::Text::Align( GD::Image->new() );
@@ -700,7 +702,7 @@ sub _max_font_size {
 			# Set the font on this text object
 			$t->set_font($font, $tryfontsize);
 		
-			printf "Width is %s (max $w) at size %s in font %s\n", $t->get('width'), $tryfontsize, $font;
+			#printf "Width is %s (max $w) at size %s in font %s\n", $t->get('width'), $tryfontsize, $font;
 			
 			# The text box is wider than the image in this font, don't check the other fonts
 			if ($t->get('width') > $w) {
@@ -716,12 +718,12 @@ sub _max_font_size {
 		$fontsize--;
 	}
 	
-	# $fontsize = $init_fontsize if $fontsize > $init_fontsize;
-	
 	# Return the font size INCLUDING the scaling, because it will be scaled down
 	#   in cloud()
 	my $fontsize_with_scaling = $fontsize * $scalings->{ $max_word };
 	
+	# Save the max font size so we can reuse it whenever cloud() is called,
+	#   without running this method again
 	$self->{max_font_size} = $fontsize_with_scaling;
 	
 	return $fontsize_with_scaling;
