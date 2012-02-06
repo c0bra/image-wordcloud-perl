@@ -280,6 +280,8 @@ sub words {
   	$word_count++;
   }
   
+  $self->{words_changed} = 1;
+  
   return $self;
 }
 
@@ -381,6 +383,7 @@ sub cloud {
 #		
 #		$sloop--;
 #	}
+
 	my $sloop = 0;
 	my %word_sizes = map { $sloop++; $_ => (1.75 / $sloop * $max_points) } @word_keys;
 	
@@ -558,7 +561,7 @@ sub cloud {
 			$y = $this_y;
 		}
 		
-		print "WIDTH: " . $text->get('width') . "\n" if $ENV{DEBUG};
+		#printf "WIDTH: %s at size %s\n", $text->get('width'), $size;
 		
 		my @bounding = $text->draw($x, $y, 0);
 		#$self->_stroke_bbox($gd, undef, @bounding);
@@ -570,6 +573,8 @@ sub cloud {
 	}
 	
 	my $total_area = sum @areas;
+	
+	$self->{words_changed} = 0; # reset the words changed flag
 	
 	# Return the image as PNG content
 	return $gd;
@@ -647,12 +652,11 @@ sub _new_coordinates {
 sub _max_font_size {
 	my $self = shift;
 	
-	# Font size we'll return (start with 25% of the image height);
-	my $fontsize = $self->_init_max_font_size();
+	return $self->{max_font_size} if $self->{max_font_size} && ! $self->{words_changed};
 	
-	# Get the smallest side of the image
-	#my $min_edge_px = $self->{image_size}->[0] < $self->{image_size}->[1] ? $self->{image_size}->[0] : $self->{image_size}->[1];
-	#my $min_points = $self->pixels_to_points($min_edge_px);
+	# Font size we'll return (start with 25% of the image height);
+	my $init_fontsize = $self->_init_max_font_size();
+	my $fontsize = $init_fontsize;
 	
 	# Image width and heigth
 	my ($w, $h) = $self->{image_size}->[0,1];
@@ -660,17 +664,20 @@ sub _max_font_size {
 	# Get the word scaling factors
 	my $scalings = $self->_word_scalings();
 	
-	# Get the longest word
+	# Get the longest word (length * scaling is being used to determine it, but there may be a better way)
 	my $max_word = "";
 	foreach my $word (keys %{ $self->words() }) {
-		#$max_word = $word if length($word) > length($max_word);
 		if (! $max_word) { $max_word = $word; next; } # init $max_word
 		
-		my $max_word = $word if length($word) * $scalings->{ $word } > length($max_word) * $scalings->{ $max_word };
+		if (length($word) * $scalings->{ $word } > length($max_word) * $scalings->{ $max_word }) {
+			$max_word = $word;
+		}
 	}
 	
+	printf "Using max word %s\n", $max_word;
+	
 	# Create the text object
-	my $t = new GD::Text::Align(new GD::Image);
+	my $t = new GD::Text::Align( GD::Image->new() );
 	$t->set_text($max_word);
 	
 	# Get every possible font we can use
@@ -679,28 +686,45 @@ sub _max_font_size {
 	while ($fontsize > 0) {
 		my $toobig = 0;
 		
-		printf "Trying fontsize: %s\n", $fontsize * $scalings->{ $max_word } if $ENV{DEBUG};
+		# The font size we try must include the scaling
+		my $tryfontsize = $fontsize * $scalings->{ $max_word };
+		
+		# If the size exceeds our "max", set it back to the max. This is a hacky way
+		# of making the sizes scale right but not excessively at the top end.
+		if ($tryfontsize > $init_fontsize) {
+			#$tryfontsize = $init_fontsize;
+		}
 		
 		# Go through every font
 		foreach my $font (@fonts) {
 			# Set the font on this text object
-			$t->set_font($font, $fontsize * $scalings->{ $max_word });
+			$t->set_font($font, $tryfontsize);
+		
+			printf "Width is %s (max $w) at size %s in font %s\n", $t->get('width'), $tryfontsize, $font;
 			
-			# The text box is wider than the image
+			# The text box is wider than the image in this font, don't check the other fonts
 			if ($t->get('width') > $w) {
-				printf "Max word %s is too big in %s (width is %s)\n", $max_word, $font, $t->get('width') if $ENV{DEBUG};
-				
 				$toobig = 1;
 				last;
 			}
 		}
 		
+		# If the text box wasn't too big, we've found our font size
 		last if ! $toobig;
 		
+		# Decrease the font size for next iteration
 		$fontsize--;
 	}
 	
-	return $fontsize;
+	# $fontsize = $init_fontsize if $fontsize > $init_fontsize;
+	
+	# Return the font size INCLUDING the scaling, because it will be scaled down
+	#   in cloud()
+	my $fontsize_with_scaling = $fontsize * $scalings->{ $max_word };
+	
+	$self->{max_font_size} = $fontsize_with_scaling;
+	
+	return $fontsize_with_scaling;
 }
 
 # Intial maximum font size is the 1/4 the heigth of the image
