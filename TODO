@@ -1,3 +1,9 @@
+2/7/2012
+* [BUG] Now that we are "nicely" choosing the max font size with
+  _max_font_size(), words aren't completely fitting within the bounds of the
+  image. We need to somehow scale the words down to fill the total area we
+  have to play with.
+
 2/6/2012
 * [FEATURE] Add padding around edges of image so words don't border up against
   it. [done]
