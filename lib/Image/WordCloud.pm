@@ -130,6 +130,7 @@ sub new {
 			font_path      => { type => SCALAR | UNDEF,   		optional => 1 },
 			background     => { type => ARRAYREF,         		optional => 1, default => [40, 40, 40] },
 			border_padding => { type => SCALAR, 							optional => 1, regex => qr/^\d+\%?$/, default => '5%' },
+			hue						 => { type => SCALAR | UNDEF, 			optional => 1 },
     });
     
     # ***TODO: Figure out how many words to use based on image size?
@@ -183,6 +184,7 @@ sub new {
 			font_file			 => $opts{'font_file'} || "",
 			background		 => $opts{'background'},
 			border_padding => $opts{'border_padding'},
+			hue            => $opts{'hue'},
     };
     bless($self, $class);
     
@@ -345,7 +347,7 @@ sub cloud {
 	my $white = $gd->colorAllocate(255, 255, 255);
 	my $black = $gd->colorAllocate(0, 0, 0);
 	
-	my @rand_colors = $self->_random_colors();
+	my @rand_colors = $self->_random_colors(hue => $self->{'hue'});
 
 	my @palette = ();
 	foreach my $c (@rand_colors) {
@@ -960,10 +962,12 @@ sub _random_colors {
 	my $self = shift;
 	
 	my %opts = validate(@_, {
-		hue       => { type => SCALAR, optional => 1, default => int(rand(359))  },
+		hue       => { type => SCALAR | UNDEF, optional => 1, default => int(rand(359))  },
 		scheme    => { type => SCALAR, optional => 1, default => 'analogic' },
 		variation => { type => SCALAR, optional => 1, default => 'default'  },
   });
+  
+  $opts{'hue'} = int(rand(359)) if ! defined $opts{'hue'};
   
   carp sprintf "Color scheme hue: %s", $opts{'hue'} if $ENV{IWC_DEBUG};
 	

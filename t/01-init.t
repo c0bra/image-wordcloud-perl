@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 
-use Test::More tests => 9;
+use Test::More tests => 10;
 use Cwd;
 use File::Spec;
 use Image::WordCloud;
@@ -17,6 +17,7 @@ $wc = Image::WordCloud->new(
 	font           => 'AveriaRegular',
 	background     => [2, 2, 2],
 	border_padding => 12,
+	hue            => 50,
 );
 
 # Make sure the options are being set right
@@ -25,6 +26,7 @@ is($wc->{'word_count'},   25,								"'word_count' being set right");
 is($wc->{'prune_boring'}, 0,								"'prune_boring' being set right");
 is($wc->{'font'}, 'AveriaRegular',					"'font' being set right");
 is($wc->{'border_padding'}, 12,							"'border_padding' being set right");
+is($wc->{'hue'}, 50,												"'hue' being set right");
 is_deeply($wc->{'background'}, [2, 2, 2],		"'background' being set right");
 
 $wc = Image::WordCloud->new(font_path => '.');
