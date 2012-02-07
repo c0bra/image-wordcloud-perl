@@ -331,13 +331,17 @@ sub cloud {
 	}
 	
 	# Create the image object 
-	my $gd = GD::Image->new($self->width, $self->height); # Adding the 3rd argument (for truecolor) borks the background, it defaults to black.
+	my $gd = GD::Image->new($self->width, $self->height, 1); # Adding the 3rd argument (for truecolor) borks the background, it defaults to black.
 	
 	# Center coordinates of this iamge
 	my $center_x = $gd->width  / 2;
 	my $center_y = $gd->height / 2;
 	
-	my $gray  = $gd->colorAllocate( @{$self->{background}}[0,1,2] ); # Background color, gray
+	my $background = $gd->colorAllocate( @{$self->{background}}[0,1,2] ); # Background color
+	
+	# Fill completely with background color
+	$gd->filledRectangle(0, 0, $gd->width, $gd->height, $background);
+	
 	my $white = $gd->colorAllocate(255, 255, 255);
 	my $black = $gd->colorAllocate(0, 0, 0);
 	
@@ -523,22 +527,24 @@ sub cloud {
 				last if $collision == 0;
 				
 				# TESTING:
-				if ($col_iter % 10 == 0) {
+				if ($col_iter % 1 == 0) {
 					my $hue = $col_iter;
-					while ($hue > 360) {
-						$hue = $hue - 360;
-					}
+					#while ($hue > 360) {
+					#	$hue = $hue - 360;
+					#}
 					
-					#my ($r,$g,$b) = $self->_hex2rgb( (Color::Scheme->new->from_hue($hue)->colors())[0] );
-					#my $c = $gd->colorAllocate($r,$g,$b);
-					
-					#$gd->filledRectangle($this_x, $this_y, $this_x + 10, $this_y + 10, $c);
+				  my ($r,$g,$b) = $self->_hex2rgb( (Color::Scheme->new->from_hue($hue)->colors())[0] ); 
+					my $c = $gd->colorAllocate($r,$g,$b);
+										
+					#$gd->filledRectangle($this_x, $this_y, $this_x + 1, $this_y + 1, $c);
 					#$gd->string(gdGiantFont, $this_x, $this_y, $col_iter, $c);
 					
-					#$gd->setPixel($this_x, $this_y, $c);
+					$gd->setPixel($this_x, $this_y, $c);
 					
 					#my @bo = $text->bounding_box($this_x, $this_y, 0);
 					#$self->_stroke_bbox($gd, $c, @bo);
+					
+					$gd->colorDeallocate($c);
 				}
 				
 				$col_iter += $col_iter_increment;
@@ -554,9 +560,9 @@ sub cloud {
 							$newy < $top_bound  || $newy2 > $bottom_bound) {
 								
 							#carp sprintf "New coordinates outside of image: (%s, %s), (%s, %s)", $newx, $newy, $newx2, $newy2;
-							$col_iter++;
+							$col_iter += $col_iter_increment;
 							if ($col_iter > 10_000) {
-								carp sprintf "New coordinates for '%s' outside of image: (%s, %s), (%s, %s)", $text->get('text'), $newx, $newy;
+								carp sprintf "New coordinates for '%s' outside of image: (%s, %s)", $text->get('text'), $newx, $newy if $ENV{IWC_DEBUG};
 								last;
 							}
 					}
@@ -831,7 +837,7 @@ sub _max_font_size {
 		# If the size exceeds our "max", set it back to the max. This is a hacky way
 		# of making the sizes scale right but not excessively at the top end.
 		if ($tryfontsize > $init_fontsize) {
-			#$tryfontsize = $init_fontsize;
+			$tryfontsize = $init_fontsize;
 		}
 		
 		# Go through every font
@@ -853,6 +859,11 @@ sub _max_font_size {
 		
 		# Decrease the font size for next iteration
 		$fontsize--;
+	}
+	
+	if ($fontsize > $init_fontsize) {
+		carp sprintf "Fontsize %s bigger than init fontize %s, revering", $fontsize, $init_fontsize if $ENV{IWC_DEBUG};
+		$fontsize = $init_fontsize;
 	}
 	
 	# Return the font size INCLUDING the scaling, because it will be scaled down
