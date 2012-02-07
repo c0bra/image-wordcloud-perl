@@ -364,7 +364,8 @@ sub cloud {
 	
 	# Max an min font sizes in points
 	my $max_points = $self->_max_font_size();
-	my $min_points = $self->_pixels_to_points(($bottom_bound - $top_bound) * 0.0175); # 0.02625;
+	#my $min_points = $self->_pixels_to_points(($bottom_bound - $top_bound) * 0.0175); # 0.02625;
+	my $min_points = $self->_pixels_to_points(($bottom_bound - $top_bound) * 0.00875);
 	
 	# Scaling modifier for font sizes
 	my $max_count = $self->{max_count};
@@ -527,13 +528,10 @@ sub cloud {
 				last if $collision == 0;
 				
 				# TESTING:
-				if ($col_iter % 1 == 0) {
+				if ($col_iter % 1 == 0 && $ENV{IWC_DEBUG} >= 2) {
 					my $hue = $col_iter;
-					#while ($hue > 360) {
-					#	$hue = $hue - 360;
-					#}
 					
-				  my ($r,$g,$b) = $self->_hex2rgb( (Color::Scheme->new->from_hue($hue)->colors())[0] ); 
+				  my ($r,$g,$b) = $self->_hex2rgb( (Color::Scheme->new->from_hue($hue)->colors())[0] ); # hues can be over 360, they just wrap around the wheel
 					my $c = $gd->colorAllocate($r,$g,$b);
 										
 					#$gd->filledRectangle($this_x, $this_y, $this_x + 1, $this_y + 1, $c);
@@ -861,14 +859,14 @@ sub _max_font_size {
 		$fontsize--;
 	}
 	
-	if ($fontsize > $init_fontsize) {
-		carp sprintf "Fontsize %s bigger than init fontize %s, revering", $fontsize, $init_fontsize if $ENV{IWC_DEBUG};
-		$fontsize = $init_fontsize;
-	}
-	
 	# Return the font size INCLUDING the scaling, because it will be scaled down
 	#   in cloud()
 	my $fontsize_with_scaling = $fontsize * $scalings->{ $max_word };
+	
+	#if ($fontsize_with_scaling > $init_fontsize) {
+	#	carp sprintf "Fontsize %s bigger than init fontsize %s, reverting", $fontsize_with_scaling, $init_fontsize if $ENV{IWC_DEBUG};
+	#	$fontsize_with_scaling = $init_fontsize;
+	#}
 	
 	# Save the max font size so we can reuse it whenever cloud() is called,
 	#   without running this method again
@@ -962,10 +960,12 @@ sub _random_colors {
 	my $self = shift;
 	
 	my %opts = validate(@_, {
-		hue       => { type => SCALAR, optional => 1, default => rand(359)  },
+		hue       => { type => SCALAR, optional => 1, default => int(rand(359))  },
 		scheme    => { type => SCALAR, optional => 1, default => 'analogic' },
 		variation => { type => SCALAR, optional => 1, default => 'default'  },
   });
+  
+  carp sprintf "Color scheme hue: %s", $opts{'hue'} if $ENV{IWC_DEBUG};
 	
 	my @rand_colors = map { [$self->_hex2rgb($_)] } Color::Scheme->new
 		->from_hue( $opts{'hue'} )
