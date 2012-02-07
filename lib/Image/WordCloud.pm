@@ -479,26 +479,23 @@ sub cloud {
 			# While this text collides with any of the other placed texts, 
 			#   move it in an enlarging spiral around the image 
 			
-			# Start in the center
-			#my $this_x = $gd->width / 2;
-			#my $this_y = $gd->height / 2;
-			
-			# Make a spiral, TODO: probably need to somehow constrain or filter points that are generated outside the image dimensions
+			# Make a spiral
 			my $path = Math::PlanePath::TheodorusSpiral->new;
 			
 			# Get the boundary width and height for random initial placement (which is bounds of the first (biggest) string)
 			my ($rand_bound_w, $rand_bound_h) = @{$bboxes[0]}[2,3];
 			
 			# Get the initial starting point
-			#my ($this_x, $this_y) = $path->n_to_xy(1);
 			my ($this_x, $this_y) = $self->_new_coordinates($gd, $path, 1, $rand_bound_w, $rand_bound_h);
 			
-			# Put the spiral in the center of the image
-			#$this_x += $center_x;
-		  #$this_y += $center_y;
-			
 			my $collision = 1;
-			my $col_iter = 1;
+			my $col_iter = 1; # Iterator to pass to M::P::TheodorusSpiral get new X,Y coords
+			
+			# Within an area of 250k pixels, it seems to work okay.
+			#my $col_iter_increment = int($self->width * $self->height * 0.00002); # Increment to increase $col_iter by on each loop
+			my $col_iter_increment = 1;
+			$col_iter_increment = 1 if $col_iter_increment < 1; # Move it at least ONE iteration
+			
 			while ($collision) {
 				# New text's coords and width/height
 				# (x1,y1) lower left corner
@@ -544,16 +541,12 @@ sub cloud {
 					#$self->_stroke_bbox($gd, $c, @bo);
 				}
 				
-				$col_iter++;
+				$col_iter += $col_iter_increment;
 				
 				# Move text
 				my $new_loc  = 0;
 				while (! $new_loc) {
 					($this_x, $this_y) = $self->_new_coordinates($gd, $path, $col_iter, $rand_bound_w, $rand_bound_h);
-					
-					# ***Don't do this check right now
-					#$new_loc = 1;
-					#last;
 					
 					my ($newx, $newy, $newx2, $newy2) = ( $text->bounding_box($this_x, $this_y) )[6,7,2,3];
 					
@@ -562,7 +555,10 @@ sub cloud {
 								
 							#carp sprintf "New coordinates outside of image: (%s, %s), (%s, %s)", $newx, $newy, $newx2, $newy2;
 							$col_iter++;
-							last if $col_iter > 10_000;
+							if ($col_iter > 10_000) {
+								carp sprintf "New coordinates for '%s' outside of image: (%s, %s), (%s, %s)", $text->get('text'), $newx, $newy;
+								last;
+							}
 					}
 					else {
 							$new_loc = 1;
@@ -580,11 +576,16 @@ sub cloud {
 				#}
 			}
 			
+			# test draw
+			#my @bounding = $text->bounding_box($this_x, $this_y, 0);
+			#$self->_stroke_bbox($gd, $white, @bounding);
+			
+			# Backtrack the coordinates towards the center
+			($this_x, $this_y) = $self->_backtrack_coordinates($text, \@bboxes, $this_x, $this_y, $gd);
+			
 			$x = $this_x;
 			$y = $this_y;
 		}
-		
-		#printf "WIDTH: %s at size %s\n", $text->get('width'), $size;
 		
 		my @bounding = $text->draw($x, $y, 0);
 		#$self->_stroke_bbox($gd, undef, @bounding);
@@ -690,15 +691,15 @@ sub _init_coordinates {
 sub _new_coordinates {
 	my $self = shift;
 	
-	my @opts = validate_pos(@_,
-  	{ isa => 'GD::Image' },
-  	{ isa => 'Math::PlanePath::TheodorusSpiral' },
-  	{ type => SCALAR, regex => qr/^[-+]?\d+$/, },
-  	{ type => SCALAR, regex => qr/^\d+|\d+\.\d+$/, },
-  	{ type => SCALAR, regex => qr/^\d+|\d+\.\d+$/, },
-  );
+	#my @opts = validate_pos(@_,
+  #	{ isa => 'GD::Image' },
+  #	{ isa => 'Math::PlanePath::TheodorusSpiral' },
+  #	{ type => SCALAR, regex => qr/^[-+]?\d+$/, },
+  #	{ type => SCALAR, regex => qr/^\d+|\d+\.\d+$/, },
+  #	{ type => SCALAR, regex => qr/^\d+|\d+\.\d+$/, },
+  #);
   
-  #my @opts = ();
+  my @opts = @_;
 	
 	my ($gd, $path, $iteration, $bound_x, $bound_y) = @opts;
 	
@@ -712,6 +713,73 @@ sub _new_coordinates {
 	$y += $gd->height / 2;
 	
 	return ($x, $y);
+}
+
+# Given a text box's position and dimensions, try to backtrack it towards the center
+#   of the image until it collides with something. This should keep our words nicely
+#   nestled against each other
+sub _backtrack_coordinates {
+	my $self = shift;
+	
+	my $text = shift;
+	
+	# Arrayref of bounding boxes to check for collision against
+	my $colliders = shift;
+	
+	# X,Y coords to start with
+	my ($x, $y) = (shift, shift);
+	
+	my ($center_x, $center_y) = ($self->width / 2, $self->height / 2);
+	$center_x = $center_x - ($text->get('width') / 2);
+	$center_y = $center_y + ($text->get('height') / 4);
+	
+	my $collision = 0;
+	my $iter = 0;
+	while (! $collision) {
+		# Stop processing if we're within 1 pixel of the center of the iamge
+		if (abs($center_x - $x) <= 1 &&
+			  abs($center_y - $y) <= 1) {
+			
+			#printf "Coords (%s,%s) too near center (%s, %s), stopping on word '%s'\n",
+			#	$x, $y,
+			#	$center_x, $center_y, $text->get('text');
+			
+			last;
+		}
+		
+		# Position and dimensions of the 
+		my ($b_x, $b_y, $b_x2, $b_y2) = ( $text->bounding_box($x, $y) )[6,7,2,3];
+		my ($b_w, $b_h) = ($b_x2 - $b_x, $b_y2 - $b_y);
+		
+		foreach my $b (@$colliders) {
+		    my ($a_x, $a_y, $a_w, $a_h) = @$b;
+		    
+		    # Upper left to lower right
+		    if ($self->_detect_collision(
+		    			$a_x, $a_y, $a_w, $a_h,
+		    			$b_x, $b_y, $b_w, $b_h)) {
+		    	
+		    	$collision = 1;
+		    	last;
+		    }
+		    else {
+		    	$collision = 0;
+		    }
+		}
+		last if $collision == 1;
+		
+		$x = ($x < $center_x) ? $x+1 : $x-1;
+		$y = ($y < $center_y) ? $y+1 : $y-1;
+		
+		#my @bbox = $text->bounding_box($x, $y, 0);
+		#$self->_stroke_bbox($gd, $gd->colorClosest(255, 255, 255), @bbox) if $iter % 10 == 0;
+		
+		$iter++;
+	}
+	
+	#printf "New xy: $x, $y\n";
+	
+	return $x, $y;
 }
 
 # Return the maximum font-size this image can use
