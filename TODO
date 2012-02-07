@@ -1,3 +1,20 @@
+2/6/2012
+* [FEATURE] Add padding around edges of image so words don't border up against
+  it. [done]
+* [FEATURE] Add test for 'border_padding' option [done]
+* [FEATURE] Need to alter number of words shown on an image based on the image
+	size and bounds. We can't fit 70 words in a 200x200
+* [OPTIMIZATION] Run time of cloud() increases as the image size increases.  In
+  fact the run time of M::P::TheodorusSpiral::n_to_xy() doubles when the image
+  doubles. This is because M::P::TheodorusSpiral has to cover a much larger
+  area and thus gets more iterations (calls). A 500x500 image makes 6709
+  calls n_to_xy(), a 1000x1000 image makes 22,987 calls, and a 2000x2000 image
+  makes 44,261 calls.
+  - Can't fix this! Internally n_to_xy() has to run over each iteration.
+    Increasing our incrementer just makes the internals spin MILLIONS of times
+    to catch up, rather than just keeping in line with the calls we make. It
+    actually takes LONGER to call it less, if we increment by more than 1.
+
 2/3/2012
 * Add untaint options to validate() for file and dir paths
 * Put test scripts in proper order. Util methods needs to be
@@ -9,7 +26,8 @@
   purples don't look good.
 
 2/2/2012
-* A words' font size needs to be scaled to fit inside the image (long words) [done]
+* A words' font size needs to be scaled to fit inside the
+  image (long words) [done]
 
 1/30/2012
 * Allow font_path to take a list of paths
