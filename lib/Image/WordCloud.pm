@@ -971,13 +971,20 @@ sub _random_colors {
   
   carp sprintf "Color scheme hue: %s", $opts{'hue'} if $ENV{IWC_DEBUG};
 	
-	my @rand_colors = map { [$self->_hex2rgb($_)] } Color::Scheme->new
+	my @rand_colors = Color::Scheme->new
 		->from_hue( $opts{'hue'} )
 		->scheme( $opts{'scheme'} )
 		->variation( $opts{'variation'} )
 		->colors();
+		
+	my @rand_rgb_colors = map { [$self->_hex2rgb($_)] } @rand_colors;
 	
-	return @rand_colors;
+	foreach my $c (@rand_rgb_colors) {
+		my $diff = $self->_color_diff($self->{'background'}, $c);
+		printf "Diff for %s,%s,%s is %s\n", $c->[0],$c->[1],$c->[2], $diff if $ENV{IWC_DEBUG};
+	}
+	
+	return @rand_rgb_colors;
 }
 
 # Convert a hexadecimal color to a list of rgb values
@@ -987,6 +994,20 @@ sub _hex2rgb {
 
 	my @rgb = map {hex($_) } unpack 'a2a2a2', $hex;
 	return @rgb;
+}
+
+sub _color_diff {
+	my $self = shift;
+	
+	my ($c1, $c2) = @_;
+	
+	my $diff = sqrt(
+		($c1->[0] - $c2->[0]) ** 2 +
+		($c1->[1] - $c2->[1]) ** 2 +
+		($c1->[2] - $c2->[2]) ** 2
+	);
+	
+	return int($diff);
 }
 
 sub _prune_stop_words {
