@@ -20,6 +20,7 @@ use Math::PlanePath::ArchimedeanChords;
 
 our $VERSION = '0.02_01';
 
+$ENV{IWC_DEBUG} = 0 if ! defined $ENV{IWC_DEBUG};
 
 =head1 NAME
 
@@ -771,24 +772,28 @@ sub _backtrack_coordinates {
 		if (abs($center_x - $x) <= 1 &&
 			  abs($center_y - $y) <= 1) {
 			
-			printf "Coords (%s,%s) too near center (%s, %s), stopping on word '%s'\n",
-				$x, $y,
-				$center_x, $center_y, $text->get('text') if $ENV{IWC_DEBUG} >=2;
+			#printf "Coords (%s,%s) too near center (%s, %s), stopping on word '%s'\n",
+			#	$x, $y,
+			#	$center_x, $center_y, $text->get('text') if $ENV{IWC_DEBUG} >=2;
 			
 			last;
 		}
 		
-		# Position and dimensions of the 
-		my ($b_x, $b_y, $b_x2, $b_y2) = ( $text->bounding_box($x, $y) )[6,7,2,3];
-		my ($b_w, $b_h) = ($b_x2 - $b_x, $b_y2 - $b_y);
+		# Position and dimensions of the text string
+		my ($a_x, $a_y, $a_x2, $a_y2) = ( $text->bounding_box($x, $y) )[6,7,2,3];
+		my ($a_w, $a_h) = ($a_x2 - $a_x, $a_y2 - $a_y);
 		
+		my $collision_with = [];
 		foreach my $b (@$colliders) {
-		    my ($a_x, $a_y, $a_w, $a_h) = @$b;
+		    my ($b_x, $b_y, $b_w, $b_h) = @$b;
 		    
 		    # Upper left to lower right
 		    if ($self->_detect_collision(
 		    			$a_x, $a_y, $a_w, $a_h,
 		    			$b_x, $b_y, $b_w, $b_h)) {
+		    	
+		    	# Add this rectangle on to the ones we've had collisions with
+		    	$collision_with = [$b_x, $b_y, $b_w, $b_h];
 		    	
 		    	$collision = 1;
 		    	last;
@@ -797,10 +802,34 @@ sub _backtrack_coordinates {
 		    	$collision = 0;
 		    }
 		}
-		last if $collision == 1;
 		
-		$x = ($x < $center_x) ? $x+1 : $x-1;
-		$y = ($y < $center_y) ? $y+1 : $y-1;
+		# If there was collision...
+		if ($collision == 1) {
+			# Get the sides that we collided with the other rectangle on
+			my @collision_sides = $self->_collision_sides($a_x, $a_y, $a_w, $a_h, @$collision_with);
+			
+			# If we only collided with one side, we should be able to move further along the other side,
+			#   i.e. if we collided only on the X axis we can still move closer on the Y axis
+			if (scalar @collision_sides == 1) {
+				# We collided on a Y-axis side, so we can move on the X-axis
+				if ($collision_sides[0] eq 'top' || $collision_sides[0] eq 'bottom') {
+					$x = ($x < $center_x) ? $x+1 : $x-1;
+				}
+				# We collided on a X-axis side, so we can move on the Y-axis
+				elsif ($collision_sides[0] eq 'left' || $collision_sides[0] eq 'right') {
+					$y = ($y < $center_y) ? $y+1 : $y-1;
+				}
+			}
+			# Total collision, stop moving!
+			elsif (scalar @collision_sides >= 2) {
+				last;
+			}
+		}
+		# No collision!	
+		else {
+			$x = ($x < $center_x) ? $x+1 : $x-1;
+			$y = ($y < $center_y) ? $y+1 : $y-1;
+		}
 		
 		#my @bbox = $text->bounding_box($x, $y, 0);
 		#$self->_stroke_bbox($gd, $gd->colorClosest(255, 255, 255), @bbox) if $iter % 10 == 0;
@@ -981,7 +1010,7 @@ sub _word_scalings {
 	return \%word_scalings;
 }
 
-# Return a hashref of words with their font sizes
+# Return a hashref of words with their scaled font sizes
 sub _word_font_sizes {
 	my $self = shift;
 	

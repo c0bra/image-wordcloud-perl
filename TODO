@@ -1,3 +1,6 @@
+2/9/2012
+* [TESTS] Add tests for _collision_sides()
+
 2/7/2012
 * [BUG] Now that we are "nicely" choosing the max font size with
   _max_font_size(), words aren't completely fitting within the bounds of the
