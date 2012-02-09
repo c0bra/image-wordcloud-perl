@@ -16,6 +16,7 @@ use GD;
 use GD::Text::Align;
 use Color::Scheme;
 use Math::PlanePath::TheodorusSpiral;
+use Math::PlanePath::ArchimedeanChords;
 
 our $VERSION = '0.02_01';
 
@@ -204,6 +205,11 @@ sub new {
 			
 			$self->{fonts} = \@fonts;
 		}
+		
+		# Set the font path for GD::Text::* objects, if we have one to use
+		if (-d $self->{'font_path'}) {
+			GD::Text->font_path( $self->{'font_path'} );
+		}
 
     return $self;
 }
@@ -326,9 +332,9 @@ sub cloud {
 	my $self = shift;
 	
 	# Set the font path for GD::Text::* objects, if we have one to use
-	if (-d $self->{'font_path'}) {
-		GD::Text->font_path( $self->{'font_path'} );
-	}
+	#if (-d $self->{'font_path'}) {
+	#	GD::Text->font_path( $self->{'font_path'} );
+	#}
 	
 	# Create the image object 
 	my $gd = GD::Image->new($self->width, $self->height, 1); # Adding the 3rd argument (for truecolor) borks the background, it defaults to black.
@@ -367,6 +373,10 @@ sub cloud {
 	#my $min_points = $self->_pixels_to_points(($bottom_bound - $top_bound) * 0.0175); # 0.02625;
 	my $min_points = $self->_pixels_to_points(($bottom_bound - $top_bound) * 0.00875);
 	
+	# Get the view scaling based on the area we can fill and what all the areas of
+	#   the words at their scaled font sizes would produce
+	my $view_scaling = $self->_view_scaling();
+	
 	# Scaling modifier for font sizes
 	my $max_count = $self->{max_count};
 	my $scaling = $max_points / $max_count;
@@ -392,7 +402,12 @@ sub cloud {
 	my $scalings = $self->_word_scalings();
 	
 	# And then create the font sizes based on the scaling * the maximum font size
-	my %word_sizes = map { $_ => $scalings->{$_} * $max_points } @word_keys;
+	
+	#   Get the initial font sizes
+	my $word_sizes = $self->_word_font_sizes();
+	
+	#   Scale the sizes by the view scaling
+	my %word_sizes = map { $_ => $word_sizes->{$_} * $view_scaling } keys %$word_sizes;
 	
 	# Get the font size for each word using the Fibonacci sequence
 #	my %word_sizes = ();
@@ -537,7 +552,7 @@ sub cloud {
 					#$gd->filledRectangle($this_x, $this_y, $this_x + 1, $this_y + 1, $c);
 					#$gd->string(gdGiantFont, $this_x, $this_y, $col_iter, $c);
 					
-					$gd->setPixel($this_x, $this_y, $c);
+					#$gd->setPixel($this_x, $this_y, $c);
 					
 					#my @bo = $text->bounding_box($this_x, $this_y, 0);
 					#$self->_stroke_bbox($gd, $c, @bo);
@@ -592,7 +607,7 @@ sub cloud {
 		}
 		
 		my @bounding = $text->draw($x, $y, 0);
-		#$self->_stroke_bbox($gd, undef, @bounding);
+		$self->_stroke_bbox($gd, undef, @bounding);
 		
 		my @rect = ($bounding[6], $bounding[7], $bounding[2] - $bounding[6], $bounding[3] - $bounding[7]);
 		push(@bboxes, \@rect);
@@ -640,6 +655,18 @@ sub _image_bounds {
 	}
 	
 	return ($left_bound, $top_bound, $right_bound, $bottom_bound);
+}
+
+# Return the width and height of the image bounds
+sub _image_bounds_width_height() {
+	my $self = shift;
+	
+	my ($left_bound, $top_bound, $right_bound, $bottom_bound) = $self->_image_bounds();
+	
+	my $w = $right_bound - $left_bound;
+	my $h = $bottom_bound - $top_bound;
+	
+	return ($w, $h);
 }
 
 # Given an initial starting point, move 
@@ -744,9 +771,9 @@ sub _backtrack_coordinates {
 		if (abs($center_x - $x) <= 1 &&
 			  abs($center_y - $y) <= 1) {
 			
-			#printf "Coords (%s,%s) too near center (%s, %s), stopping on word '%s'\n",
-			#	$x, $y,
-			#	$center_x, $center_y, $text->get('text');
+			printf "Coords (%s,%s) too near center (%s, %s), stopping on word '%s'\n",
+				$x, $y,
+				$center_x, $center_y, $text->get('text') if $ENV{IWC_DEBUG} >=2;
 			
 			last;
 		}
@@ -786,7 +813,60 @@ sub _backtrack_coordinates {
 	return $x, $y;
 }
 
+# Return the minimum area we need to have to fit all the words based on the _max_font_size
+sub _playing_field_area {
+	my $self = shift;
+	
+	my ($max_font_size, $lastfont) = $self->_max_font_size();
+	my $word_scalings = $self->_word_scalings();
+	
+	my $words = $self->words();
+	
+	my $area = 0;
+	
+	# Test GD object
+	my $text_gd = GD::Image->new();
+	
+	# Get the area 
+	foreach my $word (keys %$words) {
+		my $text = GD::Text::Align->new($text_gd);
+		$text->set_text($word);
+		
+		my $fontsize = $word_scalings->{ $word } * $max_font_size;
+		$fontsize = $max_font_size if $fontsize > $max_font_size;
+		$text->set_font($lastfont, $fontsize);
+		
+		my $word_area = $text->get('width') * $text->get('height');
+		
+		$area += $word_area;
+	}
+	
+	return $area;
+}
+
+# Overall scaling we have to use to get all the words to fit in the playing field
+sub _view_scaling {
+	my $self = shift;
+	
+	# Get the total area we have to use
+	my $pf_area = $self->_playing_field_area();
+	
+	# Get the ratio of width to height
+	my ($w, $h) = $self->_image_bounds_width_height();
+	#my $wh_ratio = $w / $h;
+	
+	#my $area_sq = sqrt($pf_area);
+	#my $area_w = $area_sq * $wh_ratio;
+	#my $area_h = $area_sq / $wh_ratio;
+	
+	my $area = $w * $h;
+	
+	my $scaling = $area / $pf_area;
+}
+
 # Return the maximum font-size this image can use
+#   optionally also return the font that caused us the most issues
+#   (i.e. has the largest size)
 sub _max_font_size {
 	my $self = shift;
 	
@@ -826,6 +906,9 @@ sub _max_font_size {
 	# Get every possible font we can use
 	my @fonts = $self->_get_all_fonts();
 	
+	# The last font that caused us size problems
+	my $lastfont = "";
+	
 	while ($fontsize > 0) {
 		my $toobig = 0;
 		
@@ -840,14 +923,17 @@ sub _max_font_size {
 		
 		# Go through every font
 		foreach my $font (@fonts) {
+			$lastfont = $font if ! $lastfont;
+			
 			# Set the font on this text object
 			$t->set_font($font, $tryfontsize);
-		
+			
 			#printf "Width is %s (max $w) at size %s in font %s\n", $t->get('width'), $tryfontsize, $font;
 			
-			# The text box is wider than the image in this font, don't check the other fonts
+			# The text box is wider than the image bounds in this font, don't check the other fonts
 			if ($t->get('width') > $right_bound - $left_bound) {
 				$toobig = 1;
+				$lastfont = $font;
 				last;
 			}
 		}
@@ -872,7 +958,7 @@ sub _max_font_size {
 	#   without running this method again
 	$self->{max_font_size} = $fontsize_with_scaling;
 	
-	return $fontsize_with_scaling;
+	return wantarray ? ($fontsize_with_scaling, $lastfont) : $fontsize_with_scaling;
 }
 
 # Initial maximum font size is the 1/4 the heigth of the image
@@ -893,6 +979,19 @@ sub _word_scalings {
 	my %word_scalings = map { $sloop++; $_ => (1.75 / $sloop) } @word_keys;
 	
 	return \%word_scalings;
+}
+
+# Return a hashref of words with their font sizes
+sub _word_font_sizes {
+	my $self = shift;
+	
+	my $max_font_size = $self->_max_font_size();
+	
+	my $word_scalings = $self->_word_scalings();
+	
+	my %word_sizes = map { $_ => $word_scalings->{$_} * $max_font_size } keys %{ $self->words() };
+	
+	return \%word_sizes;
 }
 
 # Return a single font
@@ -930,7 +1029,7 @@ sub _get_all_fonts {
 	elsif ($self->{'font'} && -d $self->{'font_path'}) {
 		@fonts = ($self->{'font'});
 	}
-	# ...or use a random font
+	# ...or all the fonts
 	elsif (scalar @{$self->{'fonts'}} > 0) {
 		@fonts = @{$self->{'fonts'}};
 	}
@@ -1040,18 +1139,83 @@ sub add_stop_words {
 sub _detect_collision {
 	my $self = shift;
 	
-	my ($a_x, $a_y, $a_w, $a_h,
-			$b_x, $b_y, $b_w, $b_h) = @_;
+	#my ($a_x, $a_y, $a_w, $a_h,
+	#		$b_x, $b_y, $b_w, $b_h) = @_;
 	
-	if (
-		!( ($b_x > $a_x + $a_w) || ($b_x + $b_w < $a_x) ||
-		   ($b_y > $a_y + $a_h) || ($b_y + $b_h < $a_y) )) {
-		
+	#if (
+	#	!( ($b_x > $a_x + $a_w) || ($b_x + $b_w < $a_x) ||
+	#	   ($b_y > $a_y + $a_h) || ($b_y + $b_h < $a_y) )) {
+	#
+	# return 1;
+	#}
+	
+	# If the two rectangle collide on the both planes then they intersect
+	if ($self->_detect_x_collision(@_) && $self->_detect_y_collision(@_)) {
 		return 1;
 	}
 	else {
 		return 0;
 	}
+}
+
+# Detect a collision on the X plane
+sub _detect_x_collision {
+	my $self = shift;
+	
+	my ($a_x, $a_y, $a_w, $a_h,
+			$b_x, $b_y, $b_w, $b_h) = @_;
+			
+	if (! (($b_x > $a_x + $a_w) || ($b_x + $b_w < $a_x)) ) {
+		return 1;
+	}
+	else {
+		return 0;
+	}
+}
+
+# Detect a collision on the Y plane
+sub _detect_y_collision {
+	my $self = shift;
+	
+	my ($a_x, $a_y, $a_w, $a_h,
+			$b_x, $b_y, $b_w, $b_h) = @_;
+			
+	if (! (($b_y > $a_y + $a_h) || ($b_y + $b_h < $a_y)) ) {
+		return 1;
+	}
+	else {
+		return 0;
+	}
+}
+
+# Return which side of object A collides with object B
+sub _collision_sides {
+	my $self = shift;
+			
+	my @sides = ();
+	
+	return @sides if ! $self->_detect_collision(@_);
+	
+	my ($a_x, $a_y, $a_w, $a_h,
+			$b_x, $b_y, $b_w, $b_h) = @_;
+	
+	if (! ($b_x + $b_w > $a_x + $a_w)) {
+		push(@sides, 'right');
+	}
+	
+	if (! ($b_x + $b_w < $a_x + $a_w)) {
+		push(@sides, 'left');
+	}
+	
+	if (! ($b_y + $b_h > $a_y + $a_h)) {
+		push(@sides, 'bottom');
+	}
+	
+	if (! ($b_y + $b_h < $a_y + $a_h)) {
+		push(@sides, 'top');
+	}
+	
+	return @sides;
 }
 
 # Stroke the outline of a bounding box
