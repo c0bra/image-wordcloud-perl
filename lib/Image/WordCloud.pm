@@ -20,7 +20,7 @@ use Math::PlanePath::ArchimedeanChords;
 
 our $VERSION = '0.02_01';
 
-$ENV{IWC_DEBUG} = 0 if ! defined $ENV{IWC_DEBUG};
+$ENV{IWC_DEBUG} = 0 if ! defined $ENV{IWC_DEBUG} || ! $ENV{IWC_DEBUG};
 
 =head1 NAME
 
@@ -608,7 +608,7 @@ sub cloud {
 		}
 		
 		my @bounding = $text->draw($x, $y, 0);
-		$self->_stroke_bbox($gd, undef, @bounding);
+		#$self->_stroke_bbox($gd, undef, @bounding);
 		
 		my @rect = ($bounding[6], $bounding[7], $bounding[2] - $bounding[6], $bounding[3] - $bounding[7]);
 		push(@bboxes, \@rect);
