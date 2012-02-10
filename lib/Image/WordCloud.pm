@@ -16,7 +16,6 @@ use GD;
 use GD::Text::Align;
 use Color::Scheme;
 use Math::PlanePath::TheodorusSpiral;
-use Math::PlanePath::ArchimedeanChords;
 
 our $VERSION = '0.02_01';
 
