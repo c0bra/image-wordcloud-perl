@@ -13,6 +13,9 @@ test_requires 'Test::More';
 test_requires 'Test::Fatal';
 test_requires 'Test::Warn';
 
+requires 'MooseX::Aliases';
+requires 'MooseX::Types::Moose';
+requires 'MooseX::Types::Structured';
 requires 'Params::Validate';
 requires 'List::Util';
 requires 'File::Spec';

@@ -5,6 +5,11 @@ use 5.008;
 use strict;
 use warnings;
 
+use Moose;
+use MooseX::Aliases;
+use MooseX::Types::Moose qw(Int);
+use MooseX::Types::Structured qw(Tuple);
+
 use Image::WordCloud::StopWords::EN qw(%STOP_WORDS);
 use Carp qw(carp croak confess);
 use Params::Validate qw(:all);
@@ -119,7 +124,27 @@ the text of the Declaration of Independence, bumping the percentage by 5% increm
 
 #'
 
-sub new {
+has [ 'width', 'height' ] => ( isa => 'Int', is => 'r' );
+
+subtype 'ImageSize', as Tuple[Int,Int];
+subtype 'Color', as Tuple[Int,Int,Int];
+
+has 'image_size' => (
+	isa     => ImageSize,
+	is      => 'rw',
+	alias   => 'imagesize',
+	default => sub { [400, 400] },
+);
+
+# Image options
+has 'background'     => { isa => Color, default => sub { [40, 40, 40] } };
+has 'border_padding' => { isa => Int | Percent,  default => 1  };
+
+# Word options
+has 'word_count'   => { isa => Int,   default => 70 };
+has 'prune_boring' => { isa => Bool,  default => 1  };
+
+sub new2 {
     my $proto = shift;
 		
     my %opts = validate(@_, {
@@ -1286,21 +1311,17 @@ sub _random_int_between {
 
 =head2 width()
 
-Return wordcloud image width
+Get wordcloud image width
 
 =cut
-sub width {
-	return shift->{image_size}->[0];
-}
 
 =head2 height()
 
-Return wordcloud image height
+Get wordcloud image height
 
 =cut
-sub height {
-	return shift->{image_size}->[1];
-}
+
+__PACKAGE__->meta->make_immutable();
 
 =head1 AUTHOR
 
