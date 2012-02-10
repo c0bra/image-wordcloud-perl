@@ -5,8 +5,8 @@ use 5.008;
 use strict;
 use warnings;
 
-use Moose;
 use namespace::autoclean;
+use Moose;
 use MooseX::Aliases;
 use MooseX::Types -declare => [qw'
 	ImageSize
@@ -1311,7 +1311,7 @@ Get wordcloud image height
 
 =cut
 
-__PACKAGE__->meta->make_immutable();
+__PACKAGE__->meta->make_immutable;
 
 =head1 AUTHOR
 

@@ -26,6 +26,7 @@ requires 'File::ShareDir';
 requires 'GD';
 requires 'GD::Text::Align';
 requires 'Color::Scheme';
+requires 'Random::PoissonDisc';
 requires 'Math::PlanePath::TheodorusSpiral';
 
 install_share;
