@@ -73,6 +73,23 @@ FUNCTIONS
         Takes an arrayref defining the background color to use. Defaults to
         [40, 40, 40]
 
+    * border_padding => <$pixels | $percent>
+        Padding to leave clear around the edges of the image, either in
+        pixels or a percent with '%' sign. Defaults to '5%'
+
+                my $wc = Image::WordCloud->new(border_padding => 20);
+                my $wc = Image::WordCloud->new(border_padding => '25%');
+
+        Please note that this affects the speed with which this module can
+        fit words into the image. In my tests on the text of the Declaration
+        of Independence, bumping the percentage by 5% increments progressed
+        like so:
+
+                0%:  15.25s
+                5%:  21.50s
+                10%: 30.00s
+                15%: 63.6s avg
+
   words(\%words_to_use | \@words | @words_to_use | $words)
     Takes either a hashref, arrayref, array or string.
 
@@ -102,6 +119,12 @@ FUNCTIONS
 
   add_stop_words(@words)
     Add new stop words onto the list. Automatically puts words in lowercase.
+
+  width()
+    Return wordcloud image width
+
+  height()
+    Return wordcloud image height
 
 AUTHOR
     Brian Hann, `<bhann at cpan.org>'
