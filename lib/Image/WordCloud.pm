@@ -6,8 +6,14 @@ use strict;
 use warnings;
 
 use Moose;
+use namespace::autoclean;
 use MooseX::Aliases;
-use MooseX::Types::Moose qw(Int);
+use MooseX::Types -declare => [qw'
+	ImageSize
+	Color
+	Percent
+'];
+use MooseX::Types::Moose qw(Str Int Bool ArrayRef HashRef);
 use MooseX::Types::Structured qw(Tuple);
 
 use Image::WordCloud::StopWords::EN qw(%STOP_WORDS);
@@ -124,119 +130,119 @@ the text of the Declaration of Independence, bumping the percentage by 5% increm
 
 #'
 
-has [ 'width', 'height' ] => ( isa => 'Int', is => 'r' );
+subtype 'Image::WordCloud::ArrayRefOfStrs', as ArrayRef[Str];
+coerce 'Image::WordCloud::ArrayRefOfStrs',
+	from Str,
+	via { [ $_ ] };
 
-subtype 'ImageSize', as Tuple[Int,Int];
-subtype 'Color', as Tuple[Int,Int,Int];
+subtype 'Image::WordCloud::ImageSize', as Tuple[Int,Int];
+subtype 'Image::WordCloud::Color', as Tuple[Int,Int,Int];
+
+subtype 'Image::WordCloud::Percent',
+	as Str,
+	where { /^\d+\%?$/o },
+	message { "A percent must be in the format '^\\d+%\$'" };
 
 has 'image_size' => (
-	isa     => ImageSize,
-	is      => 'rw',
-	alias   => 'imagesize',
-	default => sub { [400, 400] },
+	isa        => 'Image::WordCloud::ImageSize',
+	is         => 'rw',
+	alias      => 'imagesize',
+	builder    => '_build_image_size',
 );
+sub _build_image_size { return [400, 400] };
+sub width  { shift->image_size->[0] };
+sub height { shift->image_size->[1] };
 
 # Image options
-has 'background'     => { isa => Color, default => sub { [40, 40, 40] } };
-has 'border_padding' => { isa => Int | Percent,  default => 1  };
+has 'border_padding' => (
+		isa => 'Int | Image::WordCloud::Percent',
+		is => 'rw',
+		lazy => 1,
+		default => '5%'
+);
+
+has 'background' => (
+		isa     => 'Image::WordCloud::Color',
+		is      => 'rw',
+		lazy    => 1,
+		default => sub { [40, 40, 40] }
+);
 
 # Word options
-has 'word_count'   => { isa => Int,   default => 70 };
-has 'prune_boring' => { isa => Bool,  default => 1  };
+has 'word_count'   => ( isa => Int,  is => 'rw', lazy => 1, default => 70 );
+has 'prune_boring' => ( isa => Bool, is => 'rw', lazy => 1, default => 1  );
 
-sub new2 {
-    my $proto = shift;
-		
-    my %opts = validate(@_, {
-			image_size     => { type => ARRAYREF | UNDEF, 		optional => 1, default => [400, 400] },
-			word_count     => { type => SCALAR | UNDEF,   		optional => 1, default => 70 },
-			prune_boring   => { type => SCALAR | UNDEF,   		optional => 1, default => 1 },
-			font           => { type => SCALAR | UNDEF,   		optional => 1 },
-			font_file      => { type => SCALAR | UNDEF,   		optional => 1 },
-			font_path      => { type => SCALAR | UNDEF,   		optional => 1 },
-			background     => { type => ARRAYREF,         		optional => 1, default => [40, 40, 40] },
-			border_padding => { type => SCALAR, 							optional => 1, regex => qr/^\d+\%?$/, default => '5%' },
-    });
-    
-    # ***TODO: Figure out how many words to use based on image size?
-		
-		# Make sure the font file exists if it is specified
-		if ($opts{'font_file'}) {
-			unless (-f $opts{'font_file'}) {
-				carp sprintf "Specified font file '%s' not found", $opts{'font_file'};
-			}
-		}
-		
-		# Make sure the font path exists if it is specified
-		if ($opts{'font_path'}) {
-			unless (-d $opts{'font_path'}) {
-				carp sprintf "Specified font path '%s' not found", $opts{'font_path'};
-			}
-		}
-		
-		# Otherwise, try using ./share/fonts (so testing can be done)
-		if (! $opts{'font_path'}) {
-			my $local_font_path = File::Spec->catdir(".", "share", "fonts");
-			unless (-d $local_font_path) {
-				#carp sprintf "Local font path '%s' not found", $local_font_path;
-			}
-			
-			$opts{'font_path'} = $local_font_path;
-		}
-		
-		# If we still haven't found a font path, find the font path with File::ShareDir
-		if (! $opts{'font_path'}) {
-			my $font_path;
-			eval {
-				$font_path = File::Spec->catdir(dist_dir('Image-WordCloud'), "fonts");
-			};
-			if ($@) {
-				#carp "Font path for dist 'Image-WordCloud' could not be found";
-			}
-			else {
-				$opts{'font_path'} = $font_path;
-			}
-		}
-		
-    my $class = ref( $proto ) || $proto;
-    my $self = { #Will need to allow for params passed to constructor
-			words					 => {},
-			image_size		 => $opts{'image_size'},
-			word_count		 => $opts{'word_count'},
-			prune_boring	 => $opts{'prune_boring'},
-			font					 => $opts{'font'}      || "",
-			font_path			 => $opts{'font_path'} || "",
-			font_file			 => $opts{'font_file'} || "",
-			background		 => $opts{'background'},
-			border_padding => $opts{'border_padding'},
-    };
-    bless($self, $class);
-    
-    # Make sure we have a usable font file or font path
-		unless (-f $self->{'font_file'} || -d $self->{'font_path'}) {
-			carp sprintf "No usable font path or font file found, only fonts available will be from libgd, which suck";
-		}
-		# If a font_file is specified, use that as the only font
-		elsif (-f $self->{'font_file'}) {
-			$self->{fonts} = $self->{'font_file'};
-		}
-		# Otherwise if no font_file was specified and we have a font path, read in all the fonts from font_path
-		elsif (! -f $self->{'font_file'} && -d $self->{'font_path'}) {
-			my @fonts = File::Find::Rule->new()
-										->extras({ untaint => 1})
-										->file()
-										->name('*.ttf')
-										->in( $self->{'font_path'} );
-			
-			$self->{fonts} = \@fonts;
-		}
-		
-		# Set the font path for GD::Text::* objects, if we have one to use
-		if (-d $self->{'font_path'}) {
-			GD::Text->font_path( $self->{'font_path'} );
-		}
+# Font options
+has [ 'font', 'font_file', 'font_path' ] => ( isa => Str, is => 'rw', lazy => 1, default => "");
+has 'fonts' 				=> ( isa => 'Image::WordCloud::ArrayRefOfStrs', is => 'rw', init_arg => undef, coerce => 1 );
 
-    return $self;
+# Flag that gets switched whenever we alter font options
+#has 'fonts_changed'	=> { isa => Bool, 					is => 'ro', init_args => undef };
+
+sub BUILD {
+	my $self = shift;
+	
+	# Make sure the font file exists if it is specified
+	if ($self->font_file) {
+		unless (-f $self->font_file) {
+			carp sprintf "Specified font file '%s' not found", $self->font_file;
+		}
+	}
+		
+	# Make sure the font path exists if it is specified
+	if ($self->font_path) {
+		unless (-d $self->font_path) {
+			carp sprintf "Specified font path '%s' not found", $self->font_path;
+		}
+	}
+	
+	# Otherwise, try using ./share/fonts (so testing can be done)
+	if (! $self->font_path) {
+		my $local_font_path = File::Spec->catdir(".", "share", "fonts");
+		unless (-d $local_font_path) {
+			#carp sprintf "Local font path '%s' not found", $local_font_path;
+		}
+		
+		$self->font_path( $local_font_path );
+	}
+	
+	# If we still haven't found a font path, find the font path with File::ShareDir
+	if (! $self->font_path) {
+		my $font_path;
+		eval {
+			$font_path = File::Spec->catdir(dist_dir('Image-WordCloud'), "fonts");
+		};
+		if ($@) {
+			#carp "Font path for dist 'Image-WordCloud' could not be found";
+		}
+		else {
+			$self->font_path( $font_path );
+		}
+	}
+	
+	# Make sure we have a usable font file or font path
+	unless (-f $self->font_file || -d $self->font_path) {
+		carp sprintf "No usable font path or font file found, only fonts available will be from libgd, which suck";
+	}
+	# If a font_file is specified, use that as the only font
+	elsif (-f $self->font_file) {
+		$self->fonts( $self->font_file );
+	}
+	# Otherwise if no font_file was specified and we have a font path, read in all the fonts from font_path
+	elsif (! -f $self->font_file && -d $self->font_path) {
+		my @fonts = File::Find::Rule->new()
+									->extras({ untaint => 1})
+									->file()
+									->name('*.ttf')
+									->in( $self->font_path );
+		
+		$self->fonts( \@fonts );
+	}
+	
+	# Set the font path for GD::Text::* objects, if we have one to use
+	if (-d $self->font_path) {
+		GD::Text->font_path( $self->font_path );
+	}
 }
 
 =head2 words(\%words_to_use | \@words | @words_to_use | $words)
@@ -253,10 +259,6 @@ If the argument is an array, arrayref, or string, the words are parsed to remove
 
 sub words {
 	my $self = shift;
-	
-	#my @opts = validate_pos(@_,
-  #	{ type => HASHREF | ARRAYREF, optional => 1 }, # \%words
-  #);
   
   # Return words if no arguments are specified
   if (scalar(@_) == 0) { return $self->{words}; }
@@ -299,17 +301,17 @@ sub words {
 				$words{ $word }++;
 			}
 		}
-  }
+	}
   
   # Blank out the current word list;
   $self->{words} = {};
   
-  $self->_prune_stop_words(\%words) if $self->{prune_boring};
+  $self->_prune_stop_words(\%words) if $self->prune_boring;
   
-  # Sort the words by count and let N number of words through, based on $self->{word_count}
+  # Sort the words by count and let N number of words through, based on $self->word_count
   my $word_count = 1;
   foreach my $word (map { lc } sort { $words{$b} <=> $words{$a} } keys %words) {
-  	last if $word_count > $self->{word_count};
+  	last if $word_count > $self->word_count;
   	
   	my $count = $words{$word};
   	
@@ -368,7 +370,7 @@ sub cloud {
 	my $center_x = $gd->width  / 2;
 	my $center_y = $gd->height / 2;
 	
-	my $background = $gd->colorAllocate( @{$self->{background}}[0,1,2] ); # Background color
+	my $background = $gd->colorAllocate( @{$self->background}[0,1,2] ); # Background color
 	
 	# Fill completely with background color
 	$gd->filledRectangle(0, 0, $gd->width, $gd->height, $background);
@@ -464,20 +466,8 @@ sub cloud {
 		my $color = $palette[ rand @palette ];
 		$text->set(color => $color);
 		
-		# Either use the specified font file...
-		my $font = "";
-		if ($self->{'font_file'}) {
-			$font = $self->{'font_file'};
-		}
-		# Or the specified font
-		elsif ($self->{'font'} && -d $self->{'font_path'}) {
-			$font = $self->{'font'};
-		}
-		# ...or use a random font
-		elsif (scalar @{$self->{'fonts'}} > 0) {
-			$font = $self->{'fonts'}->[ rand @{$self->{'fonts'}} ];
-				unless (-f $font) { carp "Font file '$font' not found"; }
-		}
+		# Get a font to use
+		my $font = $self->_get_font();
 		
 		my $size = $word_sizes{ $word };
 		
@@ -655,7 +645,7 @@ sub _image_bounds {
 	my ($left_bound, $top_bound, $right_bound, $bottom_bound);
 	
 	# Make the boundaries for the words
-	my $pad = $self->{'border_padding'};
+	my $pad = $self->border_padding;
 	
 	# Handle zero-padding
 	if ($pad =~ /^0\%?$/) {
@@ -673,10 +663,10 @@ sub _image_bounds {
 		$bottom_bound = $self->height - $self->height * $percentage;
 	}
 	else {
-		$left_bound  = 0 + $self->{'border_padding'};
-		$top_bound   = 0 + $self->{'border_padding'};
-		$right_bound  = $self->width  - $self->{'border_padding'};
-		$bottom_bound = $self->height - $self->{'border_padding'};
+		$left_bound  = 0 + $self->border_padding;
+		$top_bound   = 0 + $self->border_padding;
+		$right_bound  = $self->width  - $self->border_padding;
+		$bottom_bound = $self->height - $self->border_padding;
 	}
 	
 	return ($left_bound, $top_bound, $right_bound, $bottom_bound);
@@ -1065,16 +1055,16 @@ sub _get_font {
 	my $font = "";
 	
 	# From a font file
-	if ($self->{'font_file'}) {
-		$font = $self->{'font_file'};
+	if ($self->font_file) {
+		$font = $self->font_file;
 	}
 	# Or the specified font
-	elsif ($self->{'font'} && -d $self->{'font_path'}) {
-		$font = $self->{'font'};
+	elsif ($self->font && -d $self->font_path) {
+		$font = $self->font;
 	}
 	# ...or use a random font
-	elsif (scalar @{$self->{'fonts'}} > 0) {
-		$font = $self->{'fonts'}->[ rand @{$self->{'fonts'}} ];
+	elsif (scalar @{$self->fonts} > 0) {
+		$font = $self->fonts->[ rand @{$self->fonts} ];
 			unless (-f $font) { carp "Font file '$font' not found"; }
 	}
 	
@@ -1086,16 +1076,16 @@ sub _get_all_fonts {
 	my $self = shift;
 	
 	my @fonts = ();
-	if ($self->{'font_file'}) {
-		@fonts = ($self->{'font_file'});
+	if ($self->font_file) {
+		@fonts = ($self->font_file);
 	}
 	# Or the specified font
-	elsif ($self->{'font'} && -d $self->{'font_path'}) {
-		@fonts = ($self->{'font'});
+	elsif ($self->font && -d $self->font_path) {
+		@fonts = ($self->font);
 	}
 	# ...or all the fonts
-	elsif (scalar @{$self->{'fonts'}} > 0) {
-		@fonts = @{$self->{'fonts'}};
+	elsif (scalar @{$self->fonts} > 0) {
+		@fonts = @{$self->fonts};
 	}
 	
 	return @fonts;
@@ -1185,7 +1175,7 @@ sub add_stop_words {
 	foreach my $word (@words) {
 		$STOP_WORDS{ lc($word) } = 1;
 	}
-		
+	
 	return $self;
 }
 
