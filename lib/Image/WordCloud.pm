@@ -372,7 +372,7 @@ sub cloud {
 	# Max an min font sizes in points
 	my $max_points = $self->_max_font_size();
 	#my $min_points = $self->_pixels_to_points(($bottom_bound - $top_bound) * 0.0175); # 0.02625;
-	my $min_points = $self->_pixels_to_points(($bottom_bound - $top_bound) * 0.00875);
+	my $min_points = $self->_min_font_size();
 	
 	# Get the view scaling based on the area we can fill and what all the areas of
 	#   the words at their scaled font sizes would produce
@@ -995,6 +995,17 @@ sub _init_max_font_size {
 	my $self = shift;
 	
 	return $self->_pixels_to_points($self->width * .25);
+}
+
+# The minimum font size to use 
+sub _min_font_size {
+	my $self = shift;
+	
+	# Get the image bound dimensions
+	my ($w, $h) = $self->_image_bounds_width_height();
+	
+	# The minimum font size is 0.8% of the image bounds height, seems to work nicely
+	return $self->_pixels_to_points($h * 0.00875);
 }
 
 # Return a hashref of words with their associated scaling
