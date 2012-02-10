@@ -15,4 +15,4 @@ my $wc = Image::WordCloud->new();
 $wc->add_stop_words('bunch')
 	 ->words('a bunch of words');
 
-is(scalar keys %{ $wc->words() }, 1, 'Stop words being set up right with method chaining');
+is(scalar keys %{ $wc->words() }, 1, 'Stop-words being set up right with method chaining');
