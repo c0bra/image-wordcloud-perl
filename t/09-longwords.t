@@ -2,7 +2,7 @@ use strict;
 use warnings;
 
 use Test::More tests => 1;
-use Test::Exception;
+use Test::Fatal;
 use File::Spec;
 use Image::WordCloud;
 use GD::Text::Align;
