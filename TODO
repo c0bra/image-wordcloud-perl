@@ -1,3 +1,10 @@
+2/13/2012
+* Got hierarchical bounding boxes working in I::W::W::BoundingBox! Now we need
+  to speed it up a bit, it's pretty inefficient. We can benchmark by recording
+  the number of calls we make to getpixel(). And since we are scanning L to R,
+  we can stop when we reach a forecolor pixel and save all the previous blank
+  pixels as its own box.
+
 2/9/2012
 * [TESTS] Add tests for _collision_sides()
 
