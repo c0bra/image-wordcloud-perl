@@ -83,6 +83,12 @@ sub font_and_size {
 # Inner objects #
 #===============#
 
+has 'gd' => (
+	isa => 'GD::Image',
+	is  => 'ro',
+	required => 1,
+);
+
 has 'gdtext' => (
 	isa => 'GD::Text::Align',
 	is  => 'ro',
@@ -93,6 +99,9 @@ has 'gdtext' => (
 #=====================#
 # Position attributes #
 #=====================#
+
+sub width  { return shift->gdtext->get('width') }
+sub height { return shift->gdtext->get('height') }
 
 # x,y coordinates
 has [ 'x', 'y' ] => ( isa => Num, is => 'rw', default => 0 );
@@ -112,7 +121,6 @@ has 'angle' => (
 	is => 'rw',
 	lazy    => 1,
 	default => 0,
-	,
 	coerce  => 1,
 );
 
@@ -156,6 +164,7 @@ sub collides_at {
 # Drawing #
 #=========#
 
+# Draw the word on the given GD::Image object
 sub draw {
 	my $self   = shift;
 	my $gd = shift || $self->gd;
@@ -170,6 +179,13 @@ sub draw {
 	$text->draw($self->x, $self->y, $self->angle);
 	
 	return $self;
+}
+
+# Return an image with the bounding boxes stroked
+sub boundingbox_image {
+	my $self = shift;
+	
+	return $self->boundingbox->boximage();
 }
 
 __PACKAGE__->meta->make_immutable;
