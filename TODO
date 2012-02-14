@@ -4,6 +4,8 @@
   the number of calls we make to getpixel(). And since we are scanning L to R,
   we can stop when we reach a forecolor pixel and save all the previous blank
   pixels as its own box.
+  - Right now we are doing 1.5-2.5x more pixel calls than we need to, the
+    ratio increases as the font size does.
 
 2/9/2012
 * [TESTS] Add tests for _collision_sides()
