@@ -169,11 +169,12 @@ sub draw {
 	my $self   = shift;
 	my $gd = shift || $self->gd;
 	
+	my $color = $gd->colorAllocate( @{ $self->color } );
+	
 	# Make a clone of our GD::Text::Align object so we can draw it on the passed-in GD image
-	my $text = GD::Text::Align->new( $gd );
+	my $text = GD::Text::Align->new( $gd, color => $color );
 	$text->set_font( $self->font, $self->fontsize );
 	$text->set_text( $self->text );
-	$text->set(color => $self->color);	
 	
 	# Draw the text
 	$text->draw($self->x, $self->y, $self->angle);
@@ -186,6 +187,18 @@ sub boundingbox_image {
 	my $self = shift;
 	
 	return $self->boundingbox->boximage();
+}
+
+sub stroke_bbox {
+	my $self = shift;
+	
+	foreach my $box (@{ $self->boundingbox->box }) {
+		$self->gd->filledRectangle(@{ $box->{tl} }, @{ $box->{br} }, $self->boundingbox->gd_hightlight_fillcolor);
+			
+		$self->gd->rectangle(@{ $box->{tl} }, @{ $box->{br} }, $self->boundingbox->gd_highlightcolor);
+	}
+	
+	return $self;
 }
 
 __PACKAGE__->meta->make_immutable;
