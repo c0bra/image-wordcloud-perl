@@ -4,11 +4,12 @@ use namespace::autoclean;
 use Moose;
 use Image::WordCloud::Word;
 use GD;
-use Random::PoissonDisc;
-use Storable qw(dclone);
-use Clone qw(clone);
+#use Random::PoissonDisc;
+use Data::GUID;
 
-use constant MIN_BOX_SIZE => 100;
+use constant MIN_BOX_SIZE => 144;
+
+our $getpixels = 0;
 
 #===============#
 # Inner Objects #
@@ -37,11 +38,41 @@ sub _build_gd {
 # Bounding box #
 #==============#
 
-has 'box' => (
-	isa => 'Hashref',
+has '_box' => (
+	isa => 'ArrayRef',
 	is  => 'rw',
 	init_arg => undef,
 );
+
+# Return the bounding boxes for this image, generating them if necessary
+sub box {
+	my $self  = shift;
+	
+	if ($self->_box) {
+		return $self->_box;
+	}
+	else {
+		my $boxes = $self->_generate_boxes();
+		$self->_box($boxes);
+		
+		return $self->_box;
+	}
+}
+
+sub _area {
+	my $self = shift;
+	
+	return $self->gd->width * $self->gd->height;
+}
+
+sub _min_box_size {
+	my $self = shift;
+	
+	my $min = $self->_area * .0025;
+	$min = MIN_BOX_SIZE if $min < MIN_BOX_SIZE;
+	
+	return $min;
+}
 
 #=========================#
 # Dimensions and Position #
@@ -56,7 +87,7 @@ has 'box' => (
 sub width  {
 	my $self = shift;
 	
-	return $self->word->width();
+	#return $self->word->width();
 	
 	return $self->coordinate_distance(
 		$self->topleft, $self->topright
@@ -66,7 +97,7 @@ sub width  {
 sub height {
 	my $self = shift;
 	
-	return $self->word->height();
+	#return $self->word->height();
 	
 	return $self->coordinate_distance(
 		$self->topleft, $self->bottomleft
@@ -146,18 +177,132 @@ sub collides {
 	$self->collides_at($box, $self->word->x, $self->word->y);
 }
 
+# Returns true if this box collides with another box,
+#   given that this box is at a specific XY coordinate
 sub collides_at {
-	my ($self, $box, $x, $y) = @_;
+	my ($self, $otherbox, $x, $y) = @_;
 	
+	# Get a list of this boundingbox's hitboxes, offset by the word's location
+	my $boxlist1 = $self->_offset_boxes( $self->box );
 	
+	# Get a list of the other boundingbox's hitboxes, offset by the other word's location
+	my $boxlist2 = $otherbox->_offset_boxes( $otherbox->box );
+	
+	# Stash for comparisons
+	my $compares = {};
+	
+	my $collides = 0;
+	
+	foreach my $box1 (@$boxlist1) {
+		foreach my $box2 (@$boxlist2) {
+			#next if exists $compares->{ $box1->{guid} }->{ $box2->{guid} };
+			
+			if ($self->_detect_collision( $box1->{tl}, $box1->{br}, $box2->{tl}, $box2->{br} )) {
+				$collides = 1;
+				last;
+			}
+			
+			#$compares->{ $box1->{guid} }->{ $box2->{guid} } = 1;
+		}
+		last if $collides;
+	}
+	
+	return $collides;
+}
+
+# Detect a collision between two rectangles, given their
+#   top-left and bottom-right corners
+sub _detect_collision {
+	my $self = shift;
+	
+	my ($a_tl, $a_br, $b_tl, $b_br) = @_;
+	
+	# Turn the box coordinates into their x,y position and their dimensions
+	my ($a_x, $a_y) = @$a_tl;
+	my $a_w = $self->_box_width( $a_tl, $a_br );
+	my $a_h = $self->_box_height( $a_tl, $a_br );
+	
+	my ($b_x, $b_y) = @$b_tl;
+	my $b_w = $self->_box_width( $b_tl, $b_br );
+	my $b_h = $self->_box_height( $b_tl, $b_br );
+	
+	# See if they collide!
+	if (
+		!( ($b_x > $a_x + $a_w) || ($b_x + $b_w < $a_x) ||
+		   ($b_y > $a_y + $a_h) || ($b_y + $b_h < $a_y) )) {
+	
+	 return 1;
+	}
+	else {
+		return 0;
+	}
+	
+	# If the two rectangle collide on the both planes then they intersect
+	#if ($self->_detect_x_collision(@_) && $self->_detect_y_collision(@_)) {
+	#	return 1;
+	#}
+	#else {
+	#	return 0;
+	#}
+}
+
+# Detect a collision on the X plane
+sub _detect_x_collision {
+	my $self = shift;
+	
+	my ($a_x, $a_y, $a_w, $a_h,
+			$b_x, $b_y, $b_w, $b_h) = @_;
+			
+	if (! (($b_x > $a_x + $a_w) || ($b_x + $b_w < $a_x)) ) {
+		return 1;
+	}
+	else {
+		return 0;
+	}
+}
+
+# Detect a collision on the Y plane
+sub _detect_y_collision {
+	my $self = shift;
+	
+	my ($a_x, $a_y, $a_w, $a_h,
+			$b_x, $b_y, $b_w, $b_h) = @_;
+			
+	if (! (($b_y > $a_y + $a_h) || ($b_y + $b_h < $a_y)) ) {
+		return 1;
+	}
+	else {
+		return 0;
+	}
 }
 
 #================#
 # Bounding boxes #
 #================#
 
+sub _offset_boxes {
+	my $self  = shift;
+	my $boxes = shift;
+	
+	# Copy the boxes
+	my @newboxes = @$boxes;
+	
+	# Add the offset of this word's location to the hitboxes
+	#
+	# ***NOTE: I have NO earthly idea why you have to subtract 75% of the word's height from the Y offset, but it works
+	foreach my $box (@newboxes) {
+		$box->{br}->[0] += $self->word->x;
+		$box->{br}->[1] += $self->word->y - $self->word->height * .75;
+		
+		$box->{tl}->[0] += $self->word->x;
+		$box->{tl}->[1] += $self->word->y - $self->word->height * .75;
+	}
+	
+	return \@newboxes;
+}
+
 sub _generate_boxes {
-	my $self = shift;
+	my $self  = shift;
 	
 	my $gd = $self->_image();
 	
@@ -180,7 +325,14 @@ sub _generate_boxes {
 		}
 	}
 	
-	return $boxes;
+	#print "GETPIXELS: $getpixels\n";
+	#my $image_pixels = $self->width * $self->height;
+	#print "Image pixels: $image_pixels\n";
+	#printf "Call ratio: %s\n", $getpixels / $image_pixels;
+	
+	#$self->box( $boxes->{hitboxes} );
+	
+	return $boxes->{hitboxes};
 }
 
 sub _recurse_box {
@@ -198,6 +350,7 @@ sub _recurse_box {
 	my $box = {
 		tl       => $dim_tl,
 		br       => $dim_br,
+		#guid     => Data::GUID->new()->as_string,
 		#children => [],
 	};
 	
@@ -206,6 +359,7 @@ sub _recurse_box {
 	my $found_fg = 0;
 	my $found_bg = 0;
 	while ($y <= $dim_br->[1]) {
+		$getpixels++;
 		my $color = $gd->getPixel($x, $y);
 		
 		# This pixel was a hit!
@@ -250,7 +404,7 @@ sub _recurse_box {
 	# Neither full nor empty, need to process it further
 	else {
 		# This box is as small as it can be, make it a hitbox and call it a day
-		if ($self->_box_area( $dim_tl, $dim_br ) <= MIN_BOX_SIZE) {
+		if ($self->_box_area( $dim_tl, $dim_br ) <= $self->_min_box_size()) {
 			$box->{hit} = 1;
 			push @{ $boxes->{hitboxes} }, $box;
 			
@@ -373,7 +527,9 @@ sub _image {
 sub boximage {
 	my $self = shift;
 	
+	$ENV{IWC_DEBUG} = 1;
 	$self->_generate_boxes();
+	$ENV{IWC_DEBUG} = 0;
 	
 	return $self->gd;
 }
