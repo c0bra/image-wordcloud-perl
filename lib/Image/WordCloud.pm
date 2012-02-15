@@ -8,17 +8,11 @@ use warnings;
 use namespace::autoclean;
 use Moose;
 use MooseX::Aliases;
-use MooseX::Types -declare => [qw'
-	ImageSize
-	PosInt
-	Color
-	Percent
-'];
-use MooseX::Types::Moose qw(Str Int Bool ArrayRef HashRef);
-use MooseX::Types::Structured qw(Tuple);
+use MooseX::Types::Moose qw(Int Num Bool Str);
 
-use Image::WordCloud::StopWords::EN qw(%STOP_WORDS);
+use Image::WordCloud::Types qw(ArrayRefOfStrs Color Percent ImageSize);
 use Image::WordCloud::Word;
+use Image::WordCloud::StopWords::EN qw(%STOP_WORDS);
 
 use Carp qw(carp croak confess);
 use Params::Validate qw(:all);
@@ -133,28 +127,10 @@ the text of the Declaration of Independence, bumping the percentage by 5% increm
 
 #'
 
-subtype 'Image::WordCloud::ArrayRefOfStrs', as ArrayRef[Str];
-coerce 'Image::WordCloud::ArrayRefOfStrs',
-	from Str,
-	via { [ $_ ] };
 
-subtype 'Image::WordCloud::ImageSize', as Tuple[Int,Int];
-
-subtype PosInt,
-	as Int, where { $_ >= 0 },
-	message { "Int is not greater than or equal 0" };
-
-subtype Color,
-	as ArrayRef[PosInt], where { @$_ == 3 },
-	message { "Must have exactly 3 ints" };
-
-subtype 'Image::WordCloud::Percent',
-	as Str,
-	where { /^\d+\%?$/o },
-	message { "A percent must be in the format '^\\d+%\$'" };
 
 has 'image_size' => (
-	isa        => 'Image::WordCloud::ImageSize',
+	isa        => ImageSize,
 	is         => 'rw',
 	alias      => 'imagesize',
 	builder    => '_build_image_size',
@@ -165,14 +141,14 @@ sub height { shift->image_size->[1] };
 
 # Image options
 has 'border_padding' => (
-		isa => 'Int | Image::WordCloud::Percent',
+		isa => Int | Percent,
 		is => 'rw',
 		lazy => 1,
 		default => '5%'
 );
 
 has 'background' => (
-		isa     => 'Color',
+		isa     => Color,
 		is      => 'rw',
 		lazy    => 1,
 		default => sub { [40, 40, 40] }
@@ -184,7 +160,7 @@ has 'prune_boring' => ( isa => Bool, is => 'rw', lazy => 1, default => 1  );
 
 # Font options
 has [ 'font', 'font_file', 'font_path' ] => ( isa => Str, is => 'rw', lazy => 1, default => "");
-has 'fonts' 				=> ( isa => 'Image::WordCloud::ArrayRefOfStrs', is => 'rw', init_arg => undef, coerce => 1 );
+has 'fonts' 				=> ( isa => ArrayRefOfStrs, is => 'rw', init_arg => undef, coerce => 1 );
 
 # Flag that gets switched whenever we alter font options
 #has 'fonts_changed'	=> { isa => Bool, 					is => 'ro', init_args => undef };
@@ -390,11 +366,11 @@ sub cloud {
 	
 	my @rand_colors = $self->_random_colors();
 
-	my @palette = ();
-	foreach my $c (@rand_colors) {
-		my $newc = $gd->colorAllocate($c->[0], $c->[1], $c->[2]);
-		push @palette, $newc;
-	}
+	#my @palette = ();
+	#foreach my $c (@rand_colors) {
+	#	my $newc = $gd->colorAllocate($c->[0], $c->[1], $c->[2]);
+	#	push @palette, $newc;
+	#}
 	
 	# make the background interlaced (***TODO: why?)
   $gd->interlaced('true');
@@ -429,6 +405,7 @@ sub cloud {
 	#   3. Bounding box width
 	#   4. Bounding box height
 	my @bboxes = ();
+	my @colliders = ();
 	
 	my $loop = 1;
 	
@@ -473,7 +450,7 @@ sub cloud {
 		#my $text = GD::Text::Align->new($gd);
 		
 		# Use a random color
-		my $color = $palette[ rand @palette ];
+		my $color = $rand_colors[ rand @rand_colors ];
 		#$text->set(color => $color);
 		
 		# Get a font to use
@@ -488,6 +465,7 @@ sub cloud {
 		$size = $min_points if $size < $min_points;
 		
 		my $text = Image::WordCloud::Word->new(
+		  gd       => $gd,
 			text 		 => $word,
 			color 	 => $color,
 			font 		 => $font,
@@ -555,7 +533,8 @@ sub cloud {
 		    # (x2,y2) lower right corner
 			  # (x3,y3) upper right corner
 		    # (x4,y4) upper left corner
-				my ($b_x, $b_y, $b_x2, $b_y2) = ( $text->bounding_box($this_x, $this_y) )[6,7,2,3];
+		    
+				my ($b_x, $b_y, $b_x2, $b_y2) = ( $text->gdtext_bounding_box($this_x, $this_y) )[6,7,2,3];
 				my ($b_w, $b_h) = ($b_x2 - $b_x, $b_y2 - $b_y);
 				
 				foreach my $b (@bboxes) {
@@ -573,6 +552,8 @@ sub cloud {
 				    	$collision = 0;
 				    }
 				}
+				#foreach my $collider (@$words
+				
 				last if $collision == 0;
 				
 				# TESTING:
@@ -600,7 +581,7 @@ sub cloud {
 				while (! $new_loc) {
 					($this_x, $this_y) = $self->_new_coordinates($gd, $path, $col_iter, $rand_bound_w, $rand_bound_h);
 					
-					my ($newx, $newy, $newx2, $newy2) = ( $text->bounding_box($this_x, $this_y) )[6,7,2,3];
+					my ($newx, $newy, $newx2, $newy2) = ( $text->gdtext_bounding_box($this_x, $this_y) )[6,7,2,3];
 					
 					if ($newx < $left_bound || $newx2 > $right_bound ||
 							$newy < $top_bound  || $newy2 > $bottom_bound) {
@@ -725,7 +706,7 @@ sub _init_coordinates {
 		$try_y += $self->_random_int_between($gd->height * .1 * -1, $gd->height * .1);
 		
 		# Make sure the new coordinates aren't outside the bounds of the image!
-		my ($newx, $newy, $newx2, $newy2) = ( $text->bounding_box($try_x, $try_y) )[6,7,2,3];
+		my ($newx, $newy, $newx2, $newy2) = ( $text->gdtext_bounding_box($try_x, $try_y) )[6,7,2,3];
 		
 		if ($newx < $left_bound || $newx2 > $right_bound ||
 				$newy < $top_bound  || $newy2 > $bottom_bound) {
@@ -812,7 +793,7 @@ sub _backtrack_coordinates {
 		}
 		
 		# Position and dimensions of the text string
-		my ($a_x, $a_y, $a_x2, $a_y2) = ( $text->bounding_box($x, $y) )[6,7,2,3];
+		my ($a_x, $a_y, $a_x2, $a_y2) = ( $text->gdtext_bounding_box($x, $y) )[6,7,2,3];
 		my ($a_w, $a_h) = ($a_x2 - $a_x, $a_y2 - $a_y);
 		
 		my $collision_with = [];

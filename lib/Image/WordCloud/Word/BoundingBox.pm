@@ -2,11 +2,9 @@ package Image::WordCloud::Word::BoundingBox;
 
 use namespace::autoclean;
 use Moose;
-use Image::WordCloud qw(PosInt Color);
+use Image::WordCloud::Types qw(Color);
 use Image::WordCloud::Word;
 use GD;
-#use Random::PoissonDisc;
-use Data::GUID;
 
 use constant MIN_BOX_SIZE => 144;
 
@@ -140,21 +138,21 @@ sub coordinate_distance {
 #===========================#
 
 has 'forecolor' => (
-	isa => 'Color',
+	isa => Color,
 	is  => 'ro',
 	default  => sub { [0,0,0] },
 	init_arg => undef,
 );
 
 has 'backcolor' => (
-	isa => 'Color',
+	isa => Color,
 	is  => 'ro',
 	default  => sub { [255,255,255] },
 	init_arg => undef,
 );
 
 has 'highlightcolor' => (
-	isa => 'Color',
+	isa => Color,
 	is  => 'ro',
 	default => sub { [255,0,0] },
 	init_arg => undef,

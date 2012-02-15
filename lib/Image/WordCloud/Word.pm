@@ -4,11 +4,10 @@ use namespace::autoclean;
 use Moose;
 use MooseX::Types::Moose qw(Str Int Num);
 use Moose::Util::TypeConstraints;
-use Math::Trig;
 use GD;
 use GD::Text::Align;
 
-use Image::WordCloud qw(Color);
+use Image::WordCloud::Types qw(ArrayRefOfStrs Color Percent ImageSize Radians);
 use Image::WordCloud::Word::BoundingBox;
 
 #==============================================================================#
@@ -34,7 +33,7 @@ sub length { length( shift->text ) }
 
 has 'color' => (
 	is   => 'rw',
-	isa  => 'Color',
+	isa  => Color,
 	lazy => 1,
 	default => sub { [0,0,0] },
 	trigger => \&_color_set
@@ -104,7 +103,7 @@ has 'gdtext' => (
 sub width  { return shift->gdtext->get('width')  }
 sub height { return shift->gdtext->get('height') }
 
-sub bounding_box {
+sub gdtext_bounding_box {
 	my $self = shift;
 	my ($x, $y, $angle) = @_;
 	
@@ -117,17 +116,10 @@ sub bounding_box {
 has [ 'x', 'y' ] => ( isa => Num, is => 'rw', default => 0 );
 sub xy { my $self = shift; return ($self->x, $self->y); }
 
-# Angle to write the word at
-subtype 'Image::WordCloud::Word::Radians',
-	as 'Num',
-	where { $_ >= 0 && $_ <= 360 };
-	
-coerce 'Image::WordCloud::Word::Radians',
-	from 'Num',
-	via { $_ * 180 / pi };
+
 
 has 'angle' => (
-	isa => 'Image::WordCloud::Word::Radians',
+	isa => Radians,
 	is => 'rw',
 	lazy    => 1,
 	default => 0,
@@ -179,6 +171,9 @@ sub draw {
 	my $self   = shift;
 	my ($x, $y, $angle) = @_;
 	
+	$x = $self->x if ! defined $x;
+	$y = $self->y if ! defined $y;
+	
 	$angle ||= 0;
 	
 	#my $gd = shift || $self->gd;
@@ -192,9 +187,7 @@ sub draw {
 	$text->set_text( $self->text );
 	
 	# Draw the text
-	$text->draw($x, $y, $angle);
-	
-	return $self;
+	return $text->draw($x, $y, $angle);
 }
 
 # Return an image with the bounding boxes stroked
