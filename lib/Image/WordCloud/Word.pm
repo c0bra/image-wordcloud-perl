@@ -8,6 +8,7 @@ use Math::Trig;
 use GD;
 use GD::Text::Align;
 
+use Image::WordCloud qw(Color);
 use Image::WordCloud::Word::BoundingBox;
 
 #==============================================================================#
@@ -33,7 +34,7 @@ sub length { length( shift->text ) }
 
 has 'color' => (
 	is   => 'rw',
-	isa  => 'Image::WordCloud::Color',
+	isa  => 'Color',
 	lazy => 1,
 	default => sub { [0,0,0] },
 	trigger => \&_color_set
@@ -100,8 +101,17 @@ has 'gdtext' => (
 # Position attributes #
 #=====================#
 
-sub width  { return shift->gdtext->get('width') }
+sub width  { return shift->gdtext->get('width')  }
 sub height { return shift->gdtext->get('height') }
+
+sub bounding_box {
+	my $self = shift;
+	my ($x, $y, $angle) = @_;
+	
+	$angle ||= 0;
+	
+	return $self->gdtext->bounding_box($x, $y, $angle);
+}
 
 # x,y coordinates
 has [ 'x', 'y' ] => ( isa => Num, is => 'rw', default => 0 );
@@ -167,7 +177,12 @@ sub collides_at {
 # Draw the word on the given GD::Image object
 sub draw {
 	my $self   = shift;
-	my $gd = shift || $self->gd;
+	my ($x, $y, $angle) = @_;
+	
+	$angle ||= 0;
+	
+	#my $gd = shift || $self->gd;
+	my $gd = $self->gd;
 	
 	my $color = $gd->colorAllocate( @{ $self->color } );
 	
@@ -177,7 +192,7 @@ sub draw {
 	$text->set_text( $self->text );
 	
 	# Draw the text
-	$text->draw($self->x, $self->y, $self->angle);
+	$text->draw($x, $y, $angle);
 	
 	return $self;
 }

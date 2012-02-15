@@ -10,6 +10,7 @@ use Moose;
 use MooseX::Aliases;
 use MooseX::Types -declare => [qw'
 	ImageSize
+	PosInt
 	Color
 	Percent
 '];
@@ -17,6 +18,8 @@ use MooseX::Types::Moose qw(Str Int Bool ArrayRef HashRef);
 use MooseX::Types::Structured qw(Tuple);
 
 use Image::WordCloud::StopWords::EN qw(%STOP_WORDS);
+use Image::WordCloud::Word;
+
 use Carp qw(carp croak confess);
 use Params::Validate qw(:all);
 use List::Util qw(sum shuffle);
@@ -28,7 +31,7 @@ use GD::Text::Align;
 use Color::Scheme;
 use Math::PlanePath::TheodorusSpiral;
 
-our $VERSION = '0.02_03';
+our $VERSION = '0.02_05';
 
 $ENV{IWC_DEBUG} = 0 if ! defined $ENV{IWC_DEBUG} || ! $ENV{IWC_DEBUG};
 
@@ -136,7 +139,14 @@ coerce 'Image::WordCloud::ArrayRefOfStrs',
 	via { [ $_ ] };
 
 subtype 'Image::WordCloud::ImageSize', as Tuple[Int,Int];
-subtype 'Image::WordCloud::Color', as Tuple[Int,Int,Int];
+
+subtype PosInt,
+	as Int, where { $_ >= 0 },
+	message { "Int is not greater than or equal 0" };
+
+subtype Color, as ArrayRef;
+	as ArrayRef[PosInt], where { @$_ == 3 },
+	message { "Must have exactly 3 ints" };
 
 subtype 'Image::WordCloud::Percent',
 	as Str,
@@ -162,7 +172,7 @@ has 'border_padding' => (
 );
 
 has 'background' => (
-		isa     => 'Image::WordCloud::Color',
+		isa     => 'Color',
 		is      => 'rw',
 		lazy    => 1,
 		default => sub { [40, 40, 40] }
@@ -460,11 +470,11 @@ sub cloud {
 	foreach my $word ( shift @word_keys, shuffle @word_keys ) {
 		my $count = $self->{words}->{$word};
 		
-		my $text = GD::Text::Align->new($gd);
+		#my $text = GD::Text::Align->new($gd);
 		
 		# Use a random color
 		my $color = $palette[ rand @palette ];
-		$text->set(color => $color);
+		#$text->set(color => $color);
 		
 		# Get a font to use
 		my $font = $self->_get_font();
@@ -477,14 +487,22 @@ sub cloud {
 		$size = $max_points if $size > $max_points;
 		$size = $min_points if $size < $min_points;
 		
-		$text->set_font($font, $size);
+		my $text = Image::WordCloud::Word->new(
+			text 		 => $word,
+			color 	 => $color,
+			font 		 => $font,
+			fontsize =>  $size,
+		);
+		
+		#$text->set_font($font, $size);
 		
 		# Set the text to this word
-		$text->set_text($word);
+		#$text->set_text($word);
 		
 		push(@texts, $text);
 		
-		my ($w, $h) = $text->get('width', 'height');
+		#my ($w, $h) = $text->get('width', 'height');
+		my ($w, $h) = ($text->width, $text->height);
 		
 		push(@areas, $w * $h);
 		
@@ -590,7 +608,7 @@ sub cloud {
 							#carp sprintf "New coordinates outside of image: (%s, %s), (%s, %s)", $newx, $newy, $newx2, $newy2;
 							$col_iter += $col_iter_increment;
 							if ($col_iter > 10_000) {
-								carp sprintf "New coordinates for '%s' outside of image: (%s, %s)", $text->get('text'), $newx, $newy if $ENV{IWC_DEBUG};
+								carp sprintf "New coordinates for '%s' outside of image: (%s, %s)", $text->text, $newx, $newy if $ENV{IWC_DEBUG};
 								last;
 							}
 					}
@@ -776,8 +794,8 @@ sub _backtrack_coordinates {
 	my ($x, $y) = (shift, shift);
 	
 	my ($center_x, $center_y) = ($self->width / 2, $self->height / 2);
-	$center_x = $center_x - ($text->get('width') / 2);
-	$center_y = $center_y + ($text->get('height') / 4);
+	$center_x = $center_x - ($text->width / 2);
+	$center_y = $center_y + ($text->height / 4);
 	
 	my $collision = 0;
 	my $iter = 0;
