@@ -17,7 +17,6 @@ requires 'Moose';
 requires 'namespace::autoclean';
 requires 'MooseX::Aliases';
 requires 'MooseX::Types::Moose';
-requires 'MooseX::Types::Structured';
 requires 'Params::Validate';
 requires 'List::Util';
 requires 'File::Spec';
@@ -26,8 +25,8 @@ requires 'File::ShareDir';
 requires 'GD';
 requires 'GD::Text::Align';
 requires 'Color::Scheme';
-requires 'Random::PoissonDisc';
 requires 'Math::PlanePath::TheodorusSpiral';
+requires 'Math::Trig';
 
 install_share;
 
