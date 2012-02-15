@@ -144,7 +144,7 @@ subtype PosInt,
 	as Int, where { $_ >= 0 },
 	message { "Int is not greater than or equal 0" };
 
-subtype Color, as ArrayRef;
+subtype Color, as ArrayRef,
 	as ArrayRef[PosInt], where { @$_ == 3 },
 	message { "Must have exactly 3 ints" };
 
