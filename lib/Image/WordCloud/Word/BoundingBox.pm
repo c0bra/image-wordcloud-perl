@@ -8,6 +8,8 @@ use GD;
 use Storable qw(dclone);
 use Data::GUID;
 
+use Smart::Comments;
+
 use constant MIN_BOX_SIZE => 144;
 
 our $getpixels = 0;
@@ -191,32 +193,110 @@ sub collides {
 sub collides_at {
 	my ($self, $otherbox, $x, $y) = @_;
 	
+	# First compare the man bounding boxes of the two words
+	#   so that we don't have to compare the hitboxes if we
+	#   KNOW the words have no way of colliding
+	if (! $self->_detect_collision(
+		  [
+		  	$self->word->x, $self->word->y
+		  ],
+		  [
+		  	$self->word->x + $self->word->width,
+		  	$self->word->y + $self->word->height,
+		  ],
+		  [
+		  	$otherbox->word->x, $otherbox->word->y
+		  ],
+		  [
+		  	$otherbox->word->x + $otherbox->word->width,
+		  	$otherbox->word->y + $otherbox->word->height,
+		  ],
+	)) {
+		return 0;
+	}
+		  	
+	
 	# Get a list of this boundingbox's hitboxes, offset by the word's location
 	my $boxlist1 = $self->_offset_boxes( $self->box );
+	my $boxhash1 = $self->{_box_hash};
 	
 	# Get a list of the other boundingbox's hitboxes, offset by the other word's location
 	my $boxlist2 = $otherbox->_offset_boxes( $otherbox->box );
+	my $boxhash2 = $otherbox->{_box_hash};
 	
 	# Stash for comparisons
 	my $compares = {};
 	
 	my $collides = 0;
 	
-	foreach my $box1 (@$boxlist1) {
-		foreach my $box2 (@$boxlist2) {
-			#next if exists $compares->{ $box1->{guid} }->{ $box2->{guid} };
+	my $comparisons = 0;
+	
+	#printf "Comparing %s boxes against %s boxes\n", (scalar @$boxlist1), (scalar @$boxlist2);
+	
+	# For every hitbox in the first boundingbox list, starting with ones that have had collisions
+	foreach my $box1 (sort hascolliders @$boxlist1) {
+		my $box1_hash = $boxhash1->{ $box1->{guid} };
+		
+		# Check it against every box we've hit before, and then against all the other boxes
+		my @comparelist = @$boxlist2;
+		
+		if ((scalar values %{ $box1->{collide_stash} }) > 0) {
+			unshift @comparelist, values %{ $box1->{collide_stash} };
+		}
+		
+		foreach my $box2 (@comparelist) {
+			my $box2_hash = $boxhash2->{ $box2->{guid} };
+			
+			# Only compare boxes once
+			next if exists $compares->{ $box1->{guid} }->{ $box2->{guid} };
+			
+			$comparisons++;
+			$Image::WordCloud::COMPARISONS++;
 			
 			if ($self->_detect_collision( $box1->{tl}, $box1->{br}, $box2->{tl}, $box2->{br} )) {
+				# Stash these boxes in each other's colliders stash so we can easily check them next time
+				$box1_hash->{collide_stash}->{ $box2_hash->{guid} } = $box2;
+				$box2_hash->{collide_stash}->{ $box1_hash->{guid} } = $box1;
+				
 				$collides = 1;
+				
 				last;
 			}
+			else {
+				# No collision, remove these boxes from each other's collider stash
+				if (exists $box1_hash->{collide_stash}) {
+					if ($self->word->text eq 'we') {
+						#print "GUID: " . $box2_hash->{guid} . "\n";
+					}
+					
+					if (defined $box1_hash->{collide_stash}->{ $box2_hash->{guid} }) {
+					#if (! defined $box2_hash->{guid} || exists $box1_hash->{collide_stash}->{ $box2_hash->{guid} }) {
+						print $box1_hash->{collide_stash} . "\n";
+						print $box2_hash->{guid} . "\n";
+						print "Thingie: " . $box1_hash->{collide_stash}->{ $box2_hash->{guid} } . "\n";
+						
+						if ($self->word->text eq 'we') {
+							use Data::Dumper; print Dumper( $box1_hash );
+						}
+						
+						delete $box1_hash->{collide_stash}->{ $box2_hash->{guid} };
+					}
+				}
+				
+				delete $box2_hash->{collide_stash}->{ $box1_hash->{guid} } if defined $box2_hash->{collide_stash}->{ $box1_hash->{guid} };
+			}
 			
-			#$compares->{ $box1->{guid} }->{ $box2->{guid} } = 1;
+			$compares->{ $box1->{guid} }->{ $box2->{guid} } = 1;
 		}
+		
 		last if $collides;
 	}
 	
 	return $collides;
+}
+
+sub hascolliders {
+	(scalar keys %{ $b->{collide_stash} }) <=> (scalar keys %{ $a->{collide_stash} })
 }
 
 # Detect a collision between two rectangles, given their
@@ -326,16 +406,6 @@ sub _generate_boxes {
 	
 	my @nohits = grep { ! defined $_->{hit} || $_->{hit} != 1 } values %{ $boxes->{allboxes} };
 	
-	#printf "Dims: %s - %s\n", ($self->word->width, $self->word->height);
-	
-	#foreach my $b (values %{ $boxes->{allboxes} }) {
-	#	if (! defined $b->{hit} || $b->{hit} != 1) {
-	#		printf "Nohit: %s,%s - %s,%s\n", $b->{tl}->[0], $b->{tl}->[1], $b->{br}->[0], $b->{br}->[1];
-	#	}
-	#}
-	
-	#use Data::Dumper; print "Hits:", Dumper(\@nohits);
-	
 	# If we didn't have any boxes that weren't hits, we can replace all the hitboxes
 	#   with one big box
 	if ((scalar @nohits) == 0) {
@@ -344,6 +414,7 @@ sub _generate_boxes {
 				br   => [$self->word->width, $self->word->height],
 				hit  => 1,
 				guid => Data::GUID->new->as_string,
+				collide_stash => {},
 		};
 		
 		$boxes->{hitboxes} = [ $bigbox ];
@@ -378,6 +449,8 @@ sub _generate_boxes {
 	
 	#$self->box( $boxes->{hitboxes} );
 	
+	$self->{_box_hash} = $boxes->{allboxes};
+	
 	return $boxes->{hitboxes};
 }
 
@@ -397,6 +470,7 @@ sub _recurse_box {
 		tl       => $dim_tl,
 		br       => $dim_br,
 		guid     => Data::GUID->new()->as_string,
+		collide_stash => {},
 		#children => [],
 	};
 	

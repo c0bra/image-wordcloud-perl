@@ -25,6 +25,8 @@ use GD::Text::Align;
 use Color::Scheme;
 use Math::PlanePath::TheodorusSpiral;
 
+use Smart::Comments;
+
 our $VERSION = '0.02_05';
 
 $ENV{IWC_DEBUG} = 0 if ! defined $ENV{IWC_DEBUG} || ! $ENV{IWC_DEBUG};
@@ -418,7 +420,13 @@ sub cloud {
 	#   Scale the sizes by the view scaling
 	my %word_sizes = map { $_ => $word_sizes->{$_} * $view_scaling } keys %$word_sizes;
 	
-	foreach my $word ( shift @word_keys, shuffle @word_keys ) {
+	#foreach my $word ( shift @word_keys, shuffle @word_keys ) {
+	foreach my $word ( @word_keys ) {
+		### Placing word: $word
+		
+		our $COMPARISONS = 0;
+		our $MOVES = 0;
+		
 		my $count = $self->{words}->{$word};
 		
 		#my $text = GD::Text::Align->new($gd);
@@ -457,11 +465,13 @@ sub cloud {
 		
 		# Place the first word in the center of the screen
 		if ($loop == 1) {
-			$x = $center_x - ($w / 2);
-			$y = $center_y + ($h / 4); # I haven't done the math see why dividing the height by 4 works, but it does
-			
-			# Move the first word around a little, but not TOO much!
-			($x, $y) = $self->_init_coordinates($gd, $text, $x, $y);
+		 $x = $center_x - ($w / 2);
+      $y = $center_y + ($h / 4); # I haven't done the math see why dividing the height by 4 works, but it does
+
+      # Move the first word around a little, but not TOO much!
+      #($x, $y) = $self->_init_coordinates($gd, $text, $x, $y);
+
+			($x, $y) = $self->_init_word_coordinates($gd, $text);
 		}
 		else {
 			# Get a random place to draw the text
@@ -478,12 +488,15 @@ sub cloud {
 			my $path = Math::PlanePath::TheodorusSpiral->new;
 			
 			# Get the boundary width and height for random initial placement (which is bounds of the first (biggest) string)
-			my ($rand_bound_w, $rand_bound_h) = ($colliders[0]->gdtext_bounding_box)[2,3];
+			#my ($rand_bound_w, $rand_bound_h) = ($colliders[0]->gdtext_bounding_box)[2,3];
 			
-			printf "Rand bounds %s - %s\n", ($rand_bound_w, $rand_bound_h);
+			#printf "Rand bounds %s - %s\n", ($rand_bound_w, $rand_bound_h);
+			
+			my ($this_x, $this_y) =  $self->_init_word_coordinates($gd, $text);
 			
 			# Get the initial starting point
-			my ($this_x, $this_y) = $self->_new_coordinates($gd, $path, 1, $rand_bound_w, $rand_bound_h);
+			#my ($this_x, $this_y) = $self->_new_coordinates($gd, $path, 1, $rand_bound_w, $rand_bound_h);
+			#my ($this_x, $this_y) = $self->_init_word_coordinates($gd, $text);
 			
 			$text->xy($this_x, $this_y);
 			
@@ -513,13 +526,15 @@ sub cloud {
 					if ($text->collides( $collider )) {
 						$collide_stash{ $collider->text } = $collider;
 						
+						#print "Collides at $this_x,$this_y\n";
+						
 						$collision = 1;
 						last;
 					}
 					else {
 						delete $collide_stash{ $collider->text };
 						
-						print "Doesn't collide at $this_x,$this_y!\n";
+						#print "Doesn't collide at $this_x,$this_y!\n";
 						$collision = 0;
 					}
 					
@@ -529,7 +544,9 @@ sub cloud {
 				last if $collision == 0;
 				
 				# TESTING:
-				if ($col_iter % 1 == 0 && $ENV{IWC_DEBUG} >= 2) {
+				if ($col_iter % 1000 == 0 && $ENV{IWC_DEBUG} >= 2) {
+					#print "Collides at $this_x,$this_y\n";
+					
 					my $hue = $col_iter;
 					
 				  my ($r,$g,$b) = $self->_hex2rgb( (Color::Scheme->new->from_hue($hue)->colors())[0] ); # hues can be over 360, they just wrap around the wheel
@@ -548,18 +565,22 @@ sub cloud {
 				
 				$col_iter += $col_iter_increment;
 				
+				#last if $col_iter > 500;
+				
 				# Move text
 				my $new_loc  = 0;
 				while (! $new_loc) {
-					($this_x, $this_y) = $self->_new_coordinates($gd, $path, $col_iter, $rand_bound_w, $rand_bound_h);
+					($this_x, $this_y) = $self->_new_coordinates($gd, $path, $col_iter);
 					
 					$text->xy($this_x, $this_y);
+					
+					$MOVES++;
 					
 					my ($newx, $newy, $newx2, $newy2) = ( $text->gdtext_bounding_box )[6,7,2,3];
 					
 					if ($newx < $left_bound || $newx2 > $right_bound ||
 							$newy < $top_bound  || $newy2 > $bottom_bound) {
-								
+							
 							#carp sprintf "New coordinates outside of image: (%s, %s), (%s, %s)", $newx, $newy, $newx2, $newy2;
 							$col_iter += $col_iter_increment;
 							if ($col_iter > 10_000) {
@@ -582,12 +603,15 @@ sub cloud {
 		
 		$text->xy($x, $y)->draw();
 		
-		print "XY: $x,$y\n";
-		print "Text xy: " . join(',', $text->xy). "\n";
+		#print "XY: $x,$y\n";
+		#print "Text xy: " . join(',', $text->xy). "\n";
 		
 		$text->stroke_bbox();
 		
 		push(@colliders, $text);
+		
+		printf "Comparisons: %s\n", $COMPARISONS;
+		printf "MOVES: %s\n", $MOVES;
 		
 		$loop++;
 	}
@@ -646,6 +670,62 @@ sub _image_bounds_width_height() {
 	my $h = $bottom_bound - $top_bound;
 	
 	return ($w, $h);
+}
+
+sub _init_word_coordinates {
+	my $self = shift;
+	my ($gd, $text) = @_;
+	
+	#croak "No X coordinate specified" if ! defined $x;
+	#croak "No Y coordinate specified" if ! defined $y;
+	
+	# Make the boundaries for the words
+	my ($left_bound, $top_bound, $right_bound, $bottom_bound) = $self->_image_bounds();
+	
+	my ($x, $y);
+	
+	my $fits = 0;
+	my $c = 0;
+	while (! $fits) {
+		# Re-initialize the coords
+		$x = $self->_random_int_between( $left_bound, $right_bound - $text->width );
+		$y = $self->_random_int_between( $top_bound + $text->height, $bottom_bound );
+		
+		# Make sure the new coordinates aren't outside the bounds of the image!
+		my ($newx, $newy, $newx2, $newy2) = ( $text->gdtext_bounding_box($x, $y) )[6,7,2,3];
+		
+		#printf "Bounds: %s, %s, %s, %s\n", ($left_bound, $top_bound, $right_bound, $bottom_bound);
+		#printf "Bounding box: %s, %s, %s, %s\n", ($newx, $newy, $newx2, $newy2);
+		
+		if ($newx < $left_bound || $newx2 > $right_bound ||
+				$newy < $top_bound  || $newy2 > $bottom_bound) {
+				
+				$fits = 0;
+		}
+		else {
+				$fits = 1;
+		}
+		
+		last;
+		
+		# Only try 50 times
+		$c++;
+		
+		if ($c > 50) {
+			carp "Tried over 50 times to fit a word" if $ENV{IWC_DEBUG} >= 3;
+			
+			#$self->_stroke_bbox($gd, undef,
+			#	$newx,  $newy,  # tl
+			#	$newx,  $newy2, # bl
+			#	$newx2, $newy2, # br
+			#	$newx2, $newy,  # tr
+			#);
+			
+			last;
+		}
+	}
+	
+	return ($x, $y);
 }
 
 # Given an initial starting point, move 
@@ -713,11 +793,11 @@ sub _new_coordinates {
 	
 	my ($gd, $path, $iteration, $bound_x, $bound_y) = @opts;
 	
-	my ($x, $y) = map { int } $path->n_to_xy($iteration); # use 'int' because it returns fractional coordinates
+	my ($x, $y) = map { int } $path->n_to_xy($iteration * 100); # use 'int' because it returns fractional coordinates
 	
 	# Move the center of this word within 50% of the area of the first word's bounding box
-	$x += $self->_random_int_between($bound_x * -1 * .25, $bound_x * .25);
-	$y += $self->_random_int_between($bound_y * -1 * .25, $bound_y * .25);
+	#$x += $self->_random_int_between($bound_x * -1 * .25, $bound_x * .25);
+	#$y += $self->_random_int_between($bound_y * -1 * .25, $bound_y * .25);
 					
 	$x += $gd->width / 2;
 	$y += $gd->height / 2;
