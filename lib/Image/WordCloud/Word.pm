@@ -107,6 +107,9 @@ sub gdtext_bounding_box {
 	my $self = shift;
 	my ($x, $y, $angle) = @_;
 	
+	$x = $self->x if ! defined $x;
+	$y = $self->y if ! defined $y;
+	
 	$angle ||= 0;
 	
 	return $self->gdtext->bounding_box($x, $y, $angle);
@@ -114,9 +117,21 @@ sub gdtext_bounding_box {
 
 # x,y coordinates
 has [ 'x', 'y' ] => ( isa => Num, is => 'rw', default => 0 );
-sub xy { my $self = shift; return ($self->x, $self->y); }
-
-
+sub xy {
+	my $self = shift;
+	
+	my ($x, $y) = @_;
+	
+	if (defined $x && defined $y) {
+		$self->x($x);
+		$self->y($y);
+		
+		return $self;
+	}
+	else {
+		return ($self->x, $self->y);
+	}
+}
 
 has 'angle' => (
 	isa => Radians,
@@ -200,7 +215,9 @@ sub boundingbox_image {
 sub stroke_bbox {
 	my $self = shift;
 	
-	foreach my $box (@{ $self->boundingbox->box }) {
+	my $boxlist = $self->boundingbox->_offset_boxes( $self->boundingbox->box );
+	
+	foreach my $box (@$boxlist) {
 		$self->gd->filledRectangle(@{ $box->{tl} }, @{ $box->{br} }, $self->boundingbox->gd_hightlight_fillcolor);
 			
 		$self->gd->rectangle(@{ $box->{tl} }, @{ $box->{br} }, $self->boundingbox->gd_highlightcolor);
