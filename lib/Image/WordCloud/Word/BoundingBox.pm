@@ -5,6 +5,8 @@ use Moose;
 use Image::WordCloud::Types qw(Color);
 use Image::WordCloud::Word;
 use GD;
+use Storable qw(dclone);
+use Data::GUID;
 
 use constant MIN_BOX_SIZE => 144;
 
@@ -158,11 +160,19 @@ has 'highlightcolor' => (
 	init_arg => undef,
 );
 
-has [ qw/gd_forecolor gd_backcolor gd_highlightcolor gd_hightlight_fillcolor/ ] => ( is => 'rw', isa => 'Int', init_arg => undef );
+
+has 'emptycolor' => (
+	isa => Color,
+	is  => 'ro',
+	default => sub { [0,255,0] },
+	init_arg => undef,
+);
+
+has [ qw/gd_forecolor gd_backcolor gd_highlightcolor gd_hightlight_fillcolor gd_empty_fillcolor/ ] => ( is => 'rw', isa => 'Int', init_arg => undef );
 
 sub colors {
 	my $self = shift;
-	return ($self->forecolor, $self->backcolor, $self->highlightcolor);
+	return ($self->forecolor, $self->backcolor, $self->highlightcolor, $self->emptycolor);
 }
 
 #============#
@@ -284,12 +294,12 @@ sub _offset_boxes {
 	my $boxes = shift;
 	
 	# Copy the boxes
-	my @newboxes = @$boxes;
+	my $newboxes = dclone($boxes);
 	
 	# Add the offset of this word's location to the hitboxes
 	#
 	# ***NOTE: I have NO earthly idea why you have to subtract 75% of the word's height from the Y offset, but it works
-	foreach my $box (@newboxes) {
+	foreach my $box (@$newboxes) {
 		$box->{br}->[0] += $self->word->x;
 		$box->{br}->[1] += $self->word->y - $self->word->height * .75;
 		
@@ -297,7 +307,7 @@ sub _offset_boxes {
 		$box->{tl}->[1] += $self->word->y - $self->word->height * .75;
 	}
 	
-	return \@newboxes;
+	return $newboxes;
 }
 
 sub _generate_boxes {
@@ -307,18 +317,55 @@ sub _generate_boxes {
 	
 	my $pixels = {};
 	my $boxes  = {
-		hitboxes => [],
-		boxtree  => {},
-		allboxes => [],
+		hitboxes  => [],
+		boxtree   => {},
+		allboxes  => {},
 		at_coords => {},
 	};
-	$self->_recurse_box($gd, $pixels, $boxes, [0,0], [$self->width, $self->height]);
+	$self->_recurse_box($gd, $pixels, $boxes, [0,0], [$self->word->width, $self->word->height]);
 	
-	if ($ENV{IWC_DEBUG} == 1) {
-		foreach my $box (@{ $boxes->{allboxes} }) {
+	my @nohits = grep { ! defined $_->{hit} || $_->{hit} != 1 } values %{ $boxes->{allboxes} };
+	
+	#printf "Dims: %s - %s\n", ($self->word->width, $self->word->height);
+	
+	#foreach my $b (values %{ $boxes->{allboxes} }) {
+	#	if (! defined $b->{hit} || $b->{hit} != 1) {
+	#		printf "Nohit: %s,%s - %s,%s\n", $b->{tl}->[0], $b->{tl}->[1], $b->{br}->[0], $b->{br}->[1];
+	#	}
+	#}
+	
+	#use Data::Dumper; print "Hits:", Dumper(\@nohits);
+	
+	# If we didn't have any boxes that weren't hits, we can replace all the hitboxes
+	#   with one big box
+	if ((scalar @nohits) == 0) {
+		my $bigbox = {
+				tl   => [0,0],
+				br   => [$self->word->width, $self->word->height],
+				hit  => 1,
+				guid => Data::GUID->new->as_string,
+		};
+		
+		$boxes->{hitboxes} = [ $bigbox ];
+		
+		$boxes->{allboxes} = {
+			$bigbox->{guid} => $bigbox,
+		};
+	}
+	
+	#use Data::Dumper; print "Hits:", Dumper( $boxes->{hitboxes} );
+	
+	if ($ENV{IWC_DEBUG} >= 1) {
+		#my $boxlist = $self->_offset_boxes( $boxes->{allboxes} );
+		my @boxlist = values %{ $boxes->{allboxes} };
+		
+		foreach my $box (@boxlist) {
 			if (exists $box->{hit}) {
 				$gd->filledRectangle(@{ $box->{tl} }, @{ $box->{br} }, $self->gd_hightlight_fillcolor);
 			}
+			#else {
+			#	$gd->filledRectangle(@{ $box->{tl} }, @{ $box->{br} }, $self->gd_empty_fillcolor);
+			#}
 			
 			$gd->rectangle(@{ $box->{tl} }, @{ $box->{br} }, $self->gd_highlightcolor);
 		}
@@ -349,7 +396,7 @@ sub _recurse_box {
 	my $box = {
 		tl       => $dim_tl,
 		br       => $dim_br,
-		#guid     => Data::GUID->new()->as_string,
+		guid     => Data::GUID->new()->as_string,
 		#children => [],
 	};
 	
@@ -362,17 +409,31 @@ sub _recurse_box {
 		my $color = $gd->getPixel($x, $y);
 		
 		# This pixel was a hit!
-		if ($color == $self->gd_forecolor) {
+		if ($color == $self->gd_backcolor) {
+			$empty = 1 if ! defined $empty;
+			$found_bg = 1;
+		}
+		else {
 			# Save this pixel
 			$pixels->{$x}->{$y} = 1;
 			
 			$full = 1 if ! defined $full;
 			$found_fg = 1;
 		}
-		elsif ($color == $self->gd_backcolor) {
-			$empty = 1 if ! defined $empty;
-			$found_bg = 1;
-		}
+		
+		#if ($color == $self->gd_forecolor) {
+		#	# Save this pixel
+		#	$pixels->{$x}->{$y} = 1;
+		#	
+		#	print "Got a hit!\n";
+		#	
+		#	$full = 1 if ! defined $full;
+		#	$found_fg = 1;
+		#}
+		#elsif ($color == $self->gd_backcolor) {
+		#	$empty = 1 if ! defined $empty;
+		#	$found_bg = 1;
+		#}
 		
 		# If we already know the box is neither full nor empty
 		#		(i.e. it has both back and forecolor) , stop looping over pixels.
@@ -386,12 +447,15 @@ sub _recurse_box {
 	}
 	
 	# All pixel processing is done
-	push @{ $boxes->{allboxes} }, $box;
+	#push @{ $boxes->{allboxes} }, $box;
+	$boxes->{allboxes}->{ $box->{guid} } = $box;
 	
 	# Every pixel in this box is the forecolor, no need to process it further
 	if (defined $full && $full && ! defined $empty && ! $empty) {
 		$box->{full} = 1;
 		$box->{hit}  = 1;
+		
+		#print "    Hit!\n";
 		
 		push @{ $boxes->{hitboxes} }, $box;
 	}
@@ -407,8 +471,13 @@ sub _recurse_box {
 			$box->{hit} = 1;
 			push @{ $boxes->{hitboxes} }, $box;
 			
+			#print "     Hit!\n";
+			
 			return $box;
 		}
+		
+		# We're splitting this box, so delete it!
+		delete $boxes->{allboxes}->{ $box->{guid} };
 		
 		# Coordinates for the first half of the box
 		my $box1_tl = $dim_tl; # The top-left of the first box will be the same as the parent box
@@ -483,7 +552,7 @@ sub _box_height {
 sub _refresh_gd {
 	my $self = shift;
 	
-	$self->{gd} = GD::Image->new($self->width + 1, $self->height + 1, 1);
+	$self->{gd} = GD::Image->new($self->word->width + 1, $self->word->height + 1, 1);
 	
 	$self->_allocateColors();
 	
@@ -493,7 +562,7 @@ sub _refresh_gd {
 sub _refresh_gd_background {
 	my $self = shift;
 	
-	$self->gd->filledRectangle(0, 0, $self->width, $self->height, $self->gd_backcolor);
+	$self->gd->filledRectangle(0, 0, $self->word->width, $self->word->height, $self->gd_backcolor);
 }
 
 sub _allocateColors {
@@ -504,6 +573,8 @@ sub _allocateColors {
 	$self->gd_highlightcolor( $self->gd->colorAllocate(@{ $self->highlightcolor }) );
 	
 	$self->gd_hightlight_fillcolor( $self->gd->colorAllocateAlpha(@{ $self->highlightcolor }, 110) );
+	
+	$self->gd_empty_fillcolor( $self->gd->colorAllocateAlpha(@{ $self->emptycolor }, 110) );
 }
 
 # Return an image with the bounding box dimensions stroked
@@ -512,13 +583,17 @@ sub _image {
 	
 	$self->_refresh_gd();
 		
-	my $newtext = $self->word->gdtext;
+	#my $newtext = $self->word->gdtext;
+	my $newtext = new GD::Text::Align($self->gd, color => $self->gd_forecolor);
+	$newtext->set_text($self->word->text);
+	$newtext->set_font($self->word->font, $self->word->fontsize);
 	
-	$newtext->{gd} = $self->gd;
-	$newtext->set('color' => $self->gd_forecolor);
+	#$newtext->{gd} = $self->gd;
+	#$newtext->set('color' => $self->gd_forecolor);
+	
 	$newtext->set(valign => 'top');
 	
-	$newtext->draw(0,0);
+	$newtext->draw(0,0,0);
 	
 	return $self->gd;
 }
@@ -527,7 +602,7 @@ sub boximage {
 	my $self = shift;
 	
 	$ENV{IWC_DEBUG} = 1;
-	$self->_generate_boxes();
+	$self->box();
 	$ENV{IWC_DEBUG} = 0;
 	
 	return $self->gd;
