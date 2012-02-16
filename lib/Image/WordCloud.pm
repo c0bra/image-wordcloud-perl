@@ -247,7 +247,10 @@ sub words {
 	my $self = shift;
   
   # Return words if no arguments are specified
-  if (scalar(@_) == 0) { return $self->{words}; }
+  if (scalar(@_) == 0) {
+  	#return wantarray ? %{ $self->{words} } : $self->{words};
+  	return $self->{words};
+  }
   
   my $arg1 = $_[0];
   
@@ -396,15 +399,8 @@ sub cloud {
 	
 	# For each word we have
 	my @areas = ();
-	#my @drawn_texts = ();
 	
-	# List of the bounding boxes of each text object. Each element is an arrayref
-	# containing:
-	#   1. Upper left x coordinate
-	#   2. Upper left y coordinate
-	#   3. Bounding box width
-	#   4. Bounding box height
-	my @bboxes = ();
+	# List of Word objects to check for collisions against
 	my @colliders = ();
 	
 	my $loop = 1;
@@ -416,33 +412,11 @@ sub cloud {
 	my $scalings = $self->_word_scalings();
 	
 	# And then create the font sizes based on the scaling * the maximum font size
-	
 	#   Get the initial font sizes
 	my $word_sizes = $self->_word_font_sizes();
 	
 	#   Scale the sizes by the view scaling
 	my %word_sizes = map { $_ => $word_sizes->{$_} * $view_scaling } keys %$word_sizes;
-	
-	# Get the font size for each word using the Fibonacci sequence
-#	my %word_sizes = ();
-#	my $sloop = 0;
-#	my $fib_counter = 1;
-#	my $cur_size;
-#	foreach my $word (@word_keys) {
-#		if ($sloop == 0) {
-#			my $term = Math::Fibonacci::term($fib_counter);
-#			
-#			$cur_size = (1 / $fib_counter * $max_points);
-#			
-#			$sloop = $term;
-#			
-#			$fib_counter++;
-#		}
-#		
-#		$word_sizes{ $word } = $cur_size;
-#		
-#		$sloop--;
-#	}
 	
 	foreach my $word ( shift @word_keys, shuffle @word_keys ) {
 		my $count = $self->{words}->{$word};
@@ -469,17 +443,11 @@ sub cloud {
 			text 		 => $word,
 			color 	 => $color,
 			font 		 => $font,
-			fontsize =>  $size,
+			fontsize => $size,
 		);
-		
-		#$text->set_font($font, $size);
-		
-		# Set the text to this word
-		#$text->set_text($word);
 		
 		push(@texts, $text);
 		
-		#my ($w, $h) = $text->get('width', 'height');
 		my ($w, $h) = ($text->width, $text->height);
 		
 		push(@areas, $w * $h);
@@ -491,10 +459,6 @@ sub cloud {
 		if ($loop == 1) {
 			$x = $center_x - ($w / 2);
 			$y = $center_y + ($h / 4); # I haven't done the math see why dividing the height by 4 works, but it does
-			
-			# Move the image center around a little
-			#$x += $self->_random_int_between($gd->width * .1 * -1, $gd->width * .1 );
-			#$y += $self->_random_int_between($gd->height * .1 * -1, $gd->height * .1);
 			
 			# Move the first word around a little, but not TOO much!
 			($x, $y) = $self->_init_coordinates($gd, $text, $x, $y);
@@ -514,10 +478,14 @@ sub cloud {
 			my $path = Math::PlanePath::TheodorusSpiral->new;
 			
 			# Get the boundary width and height for random initial placement (which is bounds of the first (biggest) string)
-			my ($rand_bound_w, $rand_bound_h) = @{$bboxes[0]}[2,3];
+			my ($rand_bound_w, $rand_bound_h) = ($colliders[0]->gdtext_bounding_box)[2,3];
+			
+			printf "Rand bounds %s - %s\n", ($rand_bound_w, $rand_bound_h);
 			
 			# Get the initial starting point
 			my ($this_x, $this_y) = $self->_new_coordinates($gd, $path, 1, $rand_bound_w, $rand_bound_h);
+			
+			$text->xy($this_x, $this_y);
 			
 			my $collision = 1;
 			my $col_iter = 1; # Iterator to pass to M::P::TheodorusSpiral get new X,Y coords
@@ -527,6 +495,8 @@ sub cloud {
 			my $col_iter_increment = 1;
 			$col_iter_increment = 1 if $col_iter_increment < 1; # Move it at least ONE iteration
 			
+			my %collide_stash = ();
+			
 			while ($collision) {
 				# New text's coords and width/height
 				# (x1,y1) lower left corner
@@ -534,25 +504,27 @@ sub cloud {
 			  # (x3,y3) upper right corner
 		    # (x4,y4) upper left corner
 		    
-				my ($b_x, $b_y, $b_x2, $b_y2) = ( $text->gdtext_bounding_box($this_x, $this_y) )[6,7,2,3];
-				my ($b_w, $b_h) = ($b_x2 - $b_x, $b_y2 - $b_y);
-				
-				foreach my $b (@bboxes) {
-				    my ($a_x, $a_y, $a_w, $a_h) = @$b;
-				    
-				    # Upper left to lower right
-				    if ($self->_detect_collision(
-				    			$a_x, $a_y, $a_w, $a_h,
-				    			$b_x, $b_y, $b_w, $b_h)) {
-				    	
-				    	$collision = 1;
-				    	last;
-				    }
-				    else {
-				    	$collision = 0;
-				    }
+		    my %checked = ();
+		    
+		    # Go through every word on the image and see if this word collides with it
+				foreach my $collider (values %collide_stash, @colliders) {
+					next if exists $checked{ $collider->text };
+					
+					if ($text->collides( $collider )) {
+						$collide_stash{ $collider->text } = $collider;
+						
+						$collision = 1;
+						last;
+					}
+					else {
+						delete $collide_stash{ $collider->text };
+						
+						print "Doesn't collide at $this_x,$this_y!\n";
+						$collision = 0;
+					}
+					
+					$checked{ $collider->text } = 1;
 				}
-				#foreach my $collider (@$words
 				
 				last if $collision == 0;
 				
@@ -566,9 +538,9 @@ sub cloud {
 					#$gd->filledRectangle($this_x, $this_y, $this_x + 1, $this_y + 1, $c);
 					#$gd->string(gdGiantFont, $this_x, $this_y, $col_iter, $c);
 					
-					#$gd->setPixel($this_x, $this_y, $c);
+					$gd->setPixel($this_x, $this_y, $c);
 					
-					#my @bo = $text->bounding_box($this_x, $this_y, 0);
+					#my @bo = $text->gdtext_bounding_box();
 					#$self->_stroke_bbox($gd, $c, @bo);
 					
 					$gd->colorDeallocate($c);
@@ -581,7 +553,9 @@ sub cloud {
 				while (! $new_loc) {
 					($this_x, $this_y) = $self->_new_coordinates($gd, $path, $col_iter, $rand_bound_w, $rand_bound_h);
 					
-					my ($newx, $newy, $newx2, $newy2) = ( $text->gdtext_bounding_box($this_x, $this_y) )[6,7,2,3];
+					$text->xy($this_x, $this_y);
+					
+					my ($newx, $newy, $newx2, $newy2) = ( $text->gdtext_bounding_box )[6,7,2,3];
 					
 					if ($newx < $left_bound || $newx2 > $right_bound ||
 							$newy < $top_bound  || $newy2 > $bottom_bound) {
@@ -594,40 +568,31 @@ sub cloud {
 							}
 					}
 					else {
-							$new_loc = 1;
+						$new_loc = 1;
 					}
 				}
-				
-				# Center the image
-				#$this_x -= $text->get('width') / 2;
-				#$this_y -= $text->get('height') / 2;
-				
-				# Center the spiral
-				#if (! $centered) {
-				#	$this_x += $center_x;
-				#	$this_y += $center_y;
-				#}
 			}
 			
-			# test draw
-			#my @bounding = $text->bounding_box($this_x, $this_y, 0);
-			#$self->_stroke_bbox($gd, $white, @bounding);
-			
 			# Backtrack the coordinates towards the center
-			($this_x, $this_y) = $self->_backtrack_coordinates($text, \@bboxes, $this_x, $this_y, $gd);
+			#($this_x, $this_y) = $self->_backtrack_coordinates($text, \@colliders, $this_x, $this_y, $gd);
 			
 			$x = $this_x;
 			$y = $this_y;
 		}
 		
-		my @bounding = $text->draw($x, $y, 0);
-		#$self->_stroke_bbox($gd, undef, @bounding);
+		$text->xy($x, $y)->draw();
 		
-		my @rect = ($bounding[6], $bounding[7], $bounding[2] - $bounding[6], $bounding[3] - $bounding[7]);
-		push(@bboxes, \@rect);
+		print "XY: $x,$y\n";
+		print "Text xy: " . join(',', $text->xy). "\n";
+		
+		$text->stroke_bbox();
+		
+		push(@colliders, $text);
 		
 		$loop++;
 	}
+	
+	#use Data::Dumper; print Dumper($colliders[0]);
 	
 	my $total_area = sum @areas;
 	
@@ -748,7 +713,7 @@ sub _new_coordinates {
 	
 	my ($gd, $path, $iteration, $bound_x, $bound_y) = @opts;
 	
-	my ($x, $y) = map { int } $path->n_to_xy($iteration * 100); # use 'int' because it returns fractional coordinates
+	my ($x, $y) = map { int } $path->n_to_xy($iteration); # use 'int' because it returns fractional coordinates
 	
 	# Move the center of this word within 50% of the area of the first word's bounding box
 	$x += $self->_random_int_between($bound_x * -1 * .25, $bound_x * .25);
@@ -766,7 +731,7 @@ sub _new_coordinates {
 sub _backtrack_coordinates {
 	my $self = shift;
 	
-	my $text = shift;
+	my $word = shift;
 	
 	# Arrayref of bounding boxes to check for collision against
 	my $colliders = shift;
@@ -775,8 +740,8 @@ sub _backtrack_coordinates {
 	my ($x, $y) = (shift, shift);
 	
 	my ($center_x, $center_y) = ($self->width / 2, $self->height / 2);
-	$center_x = $center_x - ($text->width / 2);
-	$center_y = $center_y + ($text->height / 4);
+	$center_x = $center_x - ($word->width / 2);
+	$center_y = $center_y + ($word->height / 4);
 	
 	my $collision = 0;
 	my $iter = 0;
@@ -792,60 +757,43 @@ sub _backtrack_coordinates {
 			last;
 		}
 		
-		# Position and dimensions of the text string
-		my ($a_x, $a_y, $a_x2, $a_y2) = ( $text->gdtext_bounding_box($x, $y) )[6,7,2,3];
-		my ($a_w, $a_h) = ($a_x2 - $a_x, $a_y2 - $a_y);
-		
-		my $collision_with = [];
-		foreach my $b (@$colliders) {
-		    my ($b_x, $b_y, $b_w, $b_h) = @$b;
-		    
-		    # Upper left to lower right
-		    if ($self->_detect_collision(
-		    			$a_x, $a_y, $a_w, $a_h,
-		    			$b_x, $b_y, $b_w, $b_h)) {
-		    	
-		    	# Add this rectangle on to the ones we've had collisions with
-		    	$collision_with = [$b_x, $b_y, $b_w, $b_h];
-		    	
-		    	$collision = 1;
-		    	last;
-		    }
-		    else {
-		    	$collision = 0;
-		    }
+		foreach my $collider (@$colliders) {
+			if ($word->collides( $collider )) {
+				$collision = 1;
+				last;
+			}
+			else {
+				$collision = 0;
+			}
 		}
 		
 		# If there was collision...
-		if ($collision == 1) {
-			# Get the sides that we collided with the other rectangle on
-			my @collision_sides = $self->_collision_sides($a_x, $a_y, $a_w, $a_h, @$collision_with);
-			
-			# If we only collided with one side, we should be able to move further along the other side,
-			#   i.e. if we collided only on the X axis we can still move closer on the Y axis
-			if (scalar @collision_sides == 1) {
-				# We collided on a Y-axis side, so we can move on the X-axis
-				if ($collision_sides[0] eq 'top' || $collision_sides[0] eq 'bottom') {
-					$x = ($x < $center_x) ? $x+1 : $x-1;
-				}
-				# We collided on a X-axis side, so we can move on the Y-axis
-				elsif ($collision_sides[0] eq 'left' || $collision_sides[0] eq 'right') {
-					$y = ($y < $center_y) ? $y+1 : $y-1;
-				}
-			}
-			# Total collision, stop moving!
-			elsif (scalar @collision_sides >= 2) {
-				last;
-			}
-		}
-		# No collision!	
-		else {
+#		if ($collision == 1) {
+#			# Get the sides that we collided with the other rectangle on
+#			my @collision_sides = $self->_collision_sides($a_x, $a_y, $a_w, $a_h, @$collision_with);
+#			
+#			# If we only collided with one side, we should be able to move further along the other side,
+#			#   i.e. if we collided only on the X axis we can still move closer on the Y axis
+#			if (scalar @collision_sides == 1) {
+#				# We collided on a Y-axis side, so we can move on the X-axis
+#				if ($collision_sides[0] eq 'top' || $collision_sides[0] eq 'bottom') {
+#					$x = ($x < $center_x) ? $x+1 : $x-1;
+#				}
+#				# We collided on a X-axis side, so we can move on the Y-axis
+#				elsif ($collision_sides[0] eq 'left' || $collision_sides[0] eq 'right') {
+#					$y = ($y < $center_y) ? $y+1 : $y-1;
+#				}
+#			}
+#			# Total collision, stop moving!
+#			elsif (scalar @collision_sides >= 2) {
+#				last;
+#			}
+#		}
+#		# No collision!	
+#		else {
 			$x = ($x < $center_x) ? $x+1 : $x-1;
 			$y = ($y < $center_y) ? $y+1 : $y-1;
-		}
-		
-		#my @bbox = $text->bounding_box($x, $y, 0);
-		#$self->_stroke_bbox($gd, $gd->colorClosest(255, 255, 255), @bbox) if $iter % 10 == 0;
+		#}
 		
 		$iter++;
 	}
