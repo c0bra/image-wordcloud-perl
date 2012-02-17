@@ -241,11 +241,17 @@ sub collides_at {
 		my @comparelist = @$boxlist2;
 		
 		if ((scalar values %{ $box1->{collide_stash} }) > 0) {
-			unshift @comparelist, values %{ $box1->{collide_stash} };
+			#unshift @comparelist, values %{ $box1->{collide_stash} };
 		}
 		
 		foreach my $box2 (@comparelist) {
 			my $box2_hash = $boxhash2->{ $box2->{guid} };
+			
+			# If the box hash isn't defined it must be from another
+			#   word, and won't be in this one. We can skip it.
+			if (! defined $box2_hash) {
+				next;
+			}
 			
 			# Only compare boxes once
 			next if exists $compares->{ $box1->{guid} }->{ $box2->{guid} };
@@ -271,12 +277,12 @@ sub collides_at {
 					
 					if (defined $box1_hash->{collide_stash}->{ $box2_hash->{guid} }) {
 					#if (! defined $box2_hash->{guid} || exists $box1_hash->{collide_stash}->{ $box2_hash->{guid} }) {
-						print $box1_hash->{collide_stash} . "\n";
-						print $box2_hash->{guid} . "\n";
-						print "Thingie: " . $box1_hash->{collide_stash}->{ $box2_hash->{guid} } . "\n";
+						#print $box1_hash->{collide_stash} . "\n";
+						#print $box2_hash->{guid} . "\n";
+						#print "Thingie: " . $box1_hash->{collide_stash}->{ $box2_hash->{guid} } . "\n";
 						
 						if ($self->word->text eq 'we') {
-							use Data::Dumper; print Dumper( $box1_hash );
+							#use Data::Dumper; print Dumper( $box1_hash );
 						}
 						
 						delete $box1_hash->{collide_stash}->{ $box2_hash->{guid} };

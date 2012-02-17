@@ -12,6 +12,7 @@ use MooseX::Types::Moose qw(Int Num Bool Str);
 
 use Image::WordCloud::Types qw(ArrayRefOfStrs Color Percent ImageSize);
 use Image::WordCloud::Word;
+use Image::WordCloud::PlayingField;
 use Image::WordCloud::StopWords::EN qw(%STOP_WORDS);
 
 use Carp qw(carp croak confess);
@@ -166,6 +167,12 @@ has 'fonts' 				=> ( isa => ArrayRefOfStrs, is => 'rw', init_arg => undef, coerc
 
 # Flag that gets switched whenever we alter font options
 #has 'fonts_changed'	=> { isa => Bool, 					is => 'ro', init_args => undef };
+
+has 'playingfield' => (
+	isa 		 => Image::WordCloud::PlayingField,
+	is       => 'rw',
+	init_arg => undef,
+);
 
 sub BUILD {
 	my $self = shift;
@@ -594,6 +601,8 @@ sub cloud {
 				}
 			}
 			
+			### Collision: $collision
+			
 			# Backtrack the coordinates towards the center
 			#($this_x, $this_y) = $self->_backtrack_coordinates($text, \@colliders, $this_x, $this_y, $gd);
 			
@@ -881,6 +890,25 @@ sub _backtrack_coordinates {
 	#printf "New xy: $x, $y\n";
 	
 	return $x, $y;
+}
+
+sub _build_playing_field {
+	my $self = shift;
+	
+	# Get the image bounds
+	my ($left, $top, $right, $bottom) = $self->_image_bounds();
+	
+	my $pf = Image::WordCloud::PlayingField(
+		topleft     => [$left, $top],
+		rightbottom => [$right, $bottom],
+	);
+	
+	# Build the spatial index nodetree
+	$pf->build_nodes();
+	
+	$self->playingfield( $pf );
+	
+	return $self;
 }
 
 # Return the minimum area we need to have to fit all the words based on the _max_font_size

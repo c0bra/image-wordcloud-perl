@@ -13,6 +13,7 @@ use MooseX::Types -declare => [qw/
 	Percent
 	ImageSize
 	Radians
+	Coordinate
 /];
 
 use MooseX::Types::Moose qw( Int ArrayRef Str Num );
@@ -53,5 +54,9 @@ subtype Radians,
 coerce Radians,
 	from Num,
 	via { $_ * 180 / pi };
+	
+subtype Coordinate,
+	as ArrayRef[Num], where { @$_ == 2 },
+	message { "Coordinate type must only have two elements (x & y)" };
 
 __PACKAGE__->meta->make_immutable;
