@@ -23,7 +23,6 @@ lib/Image/WordCloud/Types.pm
 lib/Image/WordCloud/Word.pm
 lib/Image/WordCloud/Word/BoundingBox.pm
 lib/Image/WordCloud/Coordinate.pm
-lib/Image/WordCloud/Word/PlayingField.pm
 lib/Image/WordCloud/Word/PlayingField/Node.pm
 lib/Image/WordCloud/StopWords/EN.pm
 examples/gettysburg.png

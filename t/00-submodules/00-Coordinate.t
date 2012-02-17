@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 
-use Test::More tests => 14;
+use Test::More tests => 12;
 use Test::Fatal;
 
 BEGIN {
@@ -31,9 +31,6 @@ like(
 
 my $c = Image::WordCloud::Coordinate->new(x => 5, y => 20);
 isa_ok($c, 'Image::WordCloud::Coordinate');
-
-can_ok('Image::WordCloud::Coordinate', 'x');
-can_ok('Image::WordCloud::Coordinate', 'y');
 
 is($c->x, 5,  "X coordinate set correctly");
 is($c->y, 20, "Y coordinate set correctly");
