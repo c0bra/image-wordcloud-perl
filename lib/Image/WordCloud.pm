@@ -12,7 +12,7 @@ use MooseX::Types::Moose qw(Int Num Bool Str);
 
 use Image::WordCloud::Types qw(ArrayRefOfStrs Color Percent ImageSize);
 use Image::WordCloud::Word;
-use Image::WordCloud::PlayingField;
+use Image::WordCloud::PlayingField::Node;
 use Image::WordCloud::StopWords::EN qw(%STOP_WORDS);
 
 use Carp qw(carp croak confess);
@@ -169,7 +169,7 @@ has 'fonts' 				=> ( isa => ArrayRefOfStrs, is => 'rw', init_arg => undef, coerc
 #has 'fonts_changed'	=> { isa => Bool, 					is => 'ro', init_args => undef };
 
 has 'playingfield' => (
-	isa 		 => Image::WordCloud::PlayingField,
+	isa 		 => 'Image::WordCloud::PlayingField::Node',
 	is       => 'rw',
 	init_arg => undef,
 );
