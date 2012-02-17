@@ -27,6 +27,7 @@ requires 'GD::Text::Align';
 requires 'Color::Scheme';
 requires 'Math::PlanePath::TheodorusSpiral';
 requires 'Math::Trig';
+requires 'Data::GUID';
 
 install_share;
 
