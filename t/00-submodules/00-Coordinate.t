@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 
-use Test::More tests => 10;
+use Test::More tests => 14;
 use Test::Fatal;
 
 BEGIN {
@@ -37,5 +37,15 @@ can_ok('Image::WordCloud::Coordinate', 'y');
 
 is($c->x, 5,  "X coordinate set correctly");
 is($c->y, 20, "Y coordinate set correctly");
+
+my ($x, $y) = $c->xy;
+
+is($x, 5,  "xy() returns proper X value");
+is($y, 20, "xy() returns proper Y value");
+
+my $xy = $c->xy;
+
+is($xy->[0], 5,  "xy() returns proper X value in an arrayref");
+is($xy->[1], 20, "xy() returns proper Y value in an arrayref");
 
 }
