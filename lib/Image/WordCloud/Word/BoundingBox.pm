@@ -42,9 +42,10 @@ sub _build_gd {
 #==============#
 
 has '_box' => (
-	isa => 'ArrayRef',
-	is  => 'rw',
-	init_arg => undef,
+  traits		=> ['Array'],
+	isa				=> 'ArrayRef',
+	is				=>  'rw',
+	init_arg	=> undef,
 );
 
 # Return the bounding boxes for this image, generating them if necessary
