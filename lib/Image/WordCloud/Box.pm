@@ -1,4 +1,4 @@
-package Image::WordCloud::PlayingField;
+package Image::WordCloud::Box;
 
 use namespace::autoclean;
 use Moose;
