@@ -26,9 +26,11 @@ has 'lefttop' => (
 	isa      => 'Image::WordCloud::Coordinate',
 	is       => 'ro',
 	required => 1,
+	coerce   => 1,
 	handles => {
 		left => 'x',
 		top  => 'y',
+		x    => 'x',
 	}
 );
 
@@ -36,22 +38,24 @@ has 'rightbottom' => (
 	isa      => 'Image::WordCloud::Coordinate',
 	is       => 'ro',
 	required => 1,
+	coerce   => 1,
 	handles => {
 		right  => 'x',
 		bottom => 'y',
+		y      => 'y',
 	}
 );
 
 sub width {
 	my $self = shift;
 	
-	return abs($self->right->x - $self->left->x);
+	return abs($self->right - $self->left);
 }
 
 sub height {
 	my $self = shift;
 	
-	return abs($self->bottom->y - $self->top->y);
+	return abs($self->bottom - $self->top);
 }
 
 sub area {
@@ -70,7 +74,6 @@ has 'min_area' => (
 has 'parent' => (
 	isa      => __PACKAGE__,
 	is       => 'ro',
-	required => 1,
 );
 
 has 'children' => (
@@ -81,6 +84,10 @@ has 'children' => (
 	init_arg => undef,
 	default  => sub { {} },
 );
+
+#========================#
+# Recursive box building #
+#========================#
 
 # Split this node in four child nodes, and recurse down them
 sub recurse {
@@ -140,6 +147,10 @@ sub add_node {
 	return $node;
 }
 
+#=====================#
+# Collision Detection #
+#=====================#
+
 sub contains {
 	my $self = shift;
 	
@@ -154,6 +165,26 @@ sub contains {
 		$br->y <= $self->bottom
 	) {
 		return 1;
+	}
+	else {
+		return 0;
+	}
+}
+
+# Detect a collision between two boxes, given their
+#   top-left and bottom-right corners
+sub detect_collision {
+	my ($self, $otherbox) = @_;
+	
+	# See if they collide!
+	if (
+		# !( ($b_x > $a_x + $a_w) || ($b_x + $b_w < $a_x) ||
+		#   ($b_y > $a_y + $a_h) || ($b_y + $b_h < $a_y) )) {
+		   	
+		!( ($otherbox->left > $self->x + $self->width)   || ($otherbox->left + $otherbox->width < $self->left) ||
+			 ($otherbox->top > $self->top + $self->height) || ($otherbox->top  + $otherbox->height < $self->top) )) {
+	 
+	 return 1;
 	}
 	else {
 		return 0;

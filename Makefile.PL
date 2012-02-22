@@ -12,6 +12,7 @@ resources
 test_requires 'Test::More';
 test_requires 'Test::Fatal';
 test_requires 'Test::Warn';
+test_requires 'Test::Moose';
 
 requires 'Moose';
 requires 'namespace::autoclean';

@@ -14,6 +14,8 @@ use constant MIN_BOX_SIZE => 144;
 
 our $getpixels = 0;
 
+extends 'Image::WordCloud::Box';
+
 #===============#
 # Inner Objects #
 #===============#

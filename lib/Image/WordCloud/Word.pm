@@ -146,7 +146,7 @@ has 'boundingbox' => (
 	isa => 'Image::WordCloud::Word::BoundingBox',
 	is  => 'ro',
 	init_arg => undef,
-	default => sub { Image::WordCloud::Word::BoundingBox->new(word => shift) }
+	#default => sub { Image::WordCloud::Word::BoundingBox->new(word => shift) }
 );
 
 #==============================================================================#
