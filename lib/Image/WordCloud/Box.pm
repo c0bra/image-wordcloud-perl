@@ -88,7 +88,7 @@ sub area {
 	return $self->width * $self->height;
 }
 
-# Minimum required area in pixels for a node to be
+# Minimum required area in pixels for a box to be
 has 'min_area' => (
 	is      => PosInt,
 	is      => 'ro',
@@ -109,6 +109,14 @@ has 'children' => (
 	lazy     => 1,
 	init_arg => undef,
 	default  => sub { {} },
+	handles  => {
+		set_child       => 'set',
+    get_child       => 'get',
+    has_no_children => 'is_empty',
+    num_children    => 'count',
+    delete_child    => 'delete',
+    child_pairs     => 'kv',
+	}
 );
 
 sub BUILDARGS {
@@ -122,17 +130,23 @@ sub BUILDARGS {
 	return \%args;
 }
 
+sub BUILD {
+	my $self = shift;
+	$self->rightbottom;
+	$self->height;
+	$self->width;
+}
+
 #========================#
 # Recursive box building #
 #========================#
 
-# Split this node in four child nodes, and recurse down them
-sub recurse {
+sub split4 {
 	my $self = shift;
 	
-	# Don't splitthis node up if it's below the minimum area threshold
+	# Don't split this box up if it's below the minimum area threshold
 	if ($self->area < $self->min_area) {
-		return $self;
+		return;
 	}
 	
 	# Split this box into four pieces
@@ -145,6 +159,8 @@ sub recurse {
 	my $lm = [$self->left, $self->bottom / 2];  # left-middle
 	my $mb = [$self->right / 2, $self->bottom]; # middle-bottom
 	
+	my @children = ();
+	
 	foreach my $coord_set (
 		[$lt, $mm], # Top-left box
 		[$mt, $rm], # Top-right box
@@ -152,36 +168,108 @@ sub recurse {
 		[$mm, $rb], # Bottom-right box
 	) {
 		
-		my $node = $self->add_node(
+		my $box = $self->add_child_box(
 			lefttop     => $coord_set->[0],
 			rightbottom => $coord_set->[1],
 		);
+		
+		push @children, $box;
 	}
 	
-	foreach my $child ($self->children->values) {
-		$child->recurse();
+	return @children;
+}
+
+# Split this box in four child boxes, and recurse down them
+sub recurse_split4 {
+	my $self = shift;
+	
+	my @children = $self->split4();
+	
+	if (@children) {
+		foreach my $child (@children) {
+			$child->recurse_split4();
+		}
 	}
 	
 	return $self;
 }
 
-# Add a child node with specific coordinates
-sub add_node {
+# Split this node into two halves
+sub split2 {
 	my $self = shift;
 	
-	my ($tl, $br) = @_;
+	# Don't split this box up if it's below the minimum area threshold
+	if ($self->area < $self->min_area) {
+		return;
+	}
 	
-	my $node = __PACKAGE__->new(
-		lefttop     => $tl,
-		rightbottom => $br,
-		parent      => $self,
+	my ($box1, $box2);
+	
+	# Split along the longer edge
+	if ($self->height > $self->width) {
+		# Add the first box
+		$box1 = $self->add_child_box(
+			lefttop => [ $self->lefttop->xy ],
+			width   => $self->width,
+			height  => $self->height / 2,
+		);
+		
+		# Add the second box
+		$box2 = $self->add_child_box(
+			lefttop => [ $self->left, $self->bottom / 2 ],
+			width   => $self->width,
+			height  => $self->height / 2,
+		);
+	}
+	else {
+		# Add the first box
+		$box1 = $self->add_child_box(
+			lefttop => [ $self->lefttop->xy ],
+			width   => $self->width / 2,
+			height  => $self->height,
+		);
+		
+		# Add the second box
+		$box2 = $self->add_child_box(
+			lefttop => [ $self->right / 2, $self->top ],
+			width   => $self->width / 2,
+			height  => $self->height,
+		);
+	}
+	
+	return ($box1, $box2);
+}
+
+sub recurse_split2 {
+	my $self = shift;
+	
+	my ($box1, $box2) = $self->split2();
+	
+	# Only split if we got children back from the split
+	if ($box1 && $box2) {
+		$box1->split2();
+		$box2->split2();
+	}
+	
+	return $self;
+}
+
+# Add a child box with specific coordinates
+sub add_child_box {
+	my $self = shift;
+	
+	my @args = @_;
+	
+	my $box = __PACKAGE__->new(
+		parent => $self,
+		@_
 	);
 	
-	$self->children->set(
-		$node->guid => $node
+	$self->set_child(
+		$box->guid => $box
 	);
 	
-	return $node;
+	return $box;
 }
 
 #=====================#
@@ -191,7 +279,7 @@ sub add_node {
 sub contains {
 	my $self = shift;
 	
-	# Top-left and bottom-right I::W::Coordinates of the box we're going to look for in this node
+	# Top-left and bottom-right I::W::Coordinates of the box we're going to look for in this box
 	my ($tl, $br) = @_;
 	
 	# If the box's top-left coordinate is within

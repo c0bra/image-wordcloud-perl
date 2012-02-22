@@ -29,4 +29,4 @@ has_attribute_ok($class, "min_area", "::Box has min_area attr");
 has_attribute_ok($class, "parent", "::Box has parent attr");
 has_attribute_ok($class, "children", "::Box has children attr");
 
-can_ok($class, qw( width height area recurse add_node contains detect_collision ));
+can_ok($class, qw( width height area split2 recurse_split2 split4 recurse_split4 add_child_box contains detect_collision ));
