@@ -5,6 +5,7 @@ use Moose;
 use MooseX::Types::Moose qw( ArrayRef HashRef Str );
 use Moose::Util::TypeConstraints;
 use Data::GUID;
+use Carp qw(croak);
 
 use Image::WordCloud::Types qw( PosInt );
 use Image::WordCloud::Coordinate;
@@ -37,30 +38,53 @@ has 'lefttop' => (
 has 'rightbottom' => (
 	isa      => 'Image::WordCloud::Coordinate',
 	is       => 'ro',
-	required => 1,
 	coerce   => 1,
 	handles => {
 		right  => 'x',
 		bottom => 'y',
 		y      => 'y',
-	}
+	},
+	lazy_build => 1
 );
 
-sub width {
+sub _build_rightbottom {
 	my $self = shift;
 	
-	return abs($self->right - $self->left);
+	croak "Must specify height and width in order to set rightbottom" unless $self->has_height && $self->has_width;
+	
+	return [$self->lefttop->x + $self->width, $self->lefttop->y + $self->height];
 }
 
-sub height {
+has 'width' => (
+	isa        => 'Num',
+	is         => 'ro',
+	lazy_build => 1
+);
+
+sub _build_width {
 	my $self = shift;
 	
-	return abs($self->bottom - $self->top);
+	croak "Must specify rightbottom to set width" unless $self->has_rightbottom;
+	
+	return $self->rightbottom->x - $self->lefttop->x;
+}
+
+has 'height' => (
+	isa        => 'Num',
+	is         => 'ro',
+	lazy_build => 1
+);
+
+sub _build_height {
+	my $self = shift;
+	
+	croak "Must specify rightbottom to set height" unless $self->has_rightbottom;
+	
+	return $self->rightbottom->y - $self->lefttop->y;
 }
 
 sub area {
 	my $self = shift;
-	
 	return $self->width * $self->height;
 }
 
@@ -72,8 +96,10 @@ has 'min_area' => (
 );
 
 has 'parent' => (
-	isa      => __PACKAGE__,
-	is       => 'ro',
+	isa       => __PACKAGE__,
+	is        => 'ro',
+	predicate => 'has_parent',
+	weak_ref  => 1,
 );
 
 has 'children' => (
@@ -84,6 +110,17 @@ has 'children' => (
 	init_arg => undef,
 	default  => sub { {} },
 );
+
+sub BUILDARGS {
+	my $self = shift;
+	my %args = @_;
+	
+	if (exists $args{'rightbottom'} && (exists $args{'height'} || exists $args{'width'})) {
+		croak "If you specify 'rightbottom', you must not specify 'height' or 'width', likewise if you specify 'height' and 'width', you must not specify 'rightbottom'";
+	}
+	
+	return \%args;
+}
 
 #========================#
 # Recursive box building #
