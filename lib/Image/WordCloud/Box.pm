@@ -279,17 +279,14 @@ sub add_child_box {
 #=====================#
 
 sub contains {
-	my $self = shift;
-	
-	# Top-left and bottom-right I::W::Coordinates of the box we're going to look for in this box
-	my ($tl, $br) = @_;
+	my ($self, $box) = @_;
 	
 	# If the box's top-left coordinate is within
 	if (
-		$tl->x >= $self->left   &&
-		$br->x <= $self->right  &&
-		$tl->y >= $self->top    &&
-		$br->y <= $self->bottom
+		$box->left   >= $self->left   &&
+		$box->right  <= $self->right  &&
+		$box->top    >= $self->top    &&
+		$box->bottom <= $self->bottom
 	) {
 		return 1;
 	}
