@@ -132,6 +132,8 @@ sub BUILDARGS {
 
 sub BUILD {
 	my $self = shift;
+	
+	# Make sure these get instantiated on build, though they're lazy
 	$self->rightbottom;
 	$self->height;
 	$self->width;
@@ -151,11 +153,11 @@ sub split4 {
 	
 	# Split this box into four pieces
 	#   NOTE: X comes before Y, hence the naming convention
-	my $lt = $self->leftop;
-	my $rb = $self->rightbottom;
+	my $lt = [$self->lefttop->x, $self->lefttop->y];
+	my $rb = [$self->rightbottom->x, $self->rightbottom->y];
 	my $mt = [$self->right / 2, $self->top];    # middle-top
 	my $rm = [$self->right, $self->bottom / 2]; # right-middle
-	my $mm = [$self->right / 2, $self ];        # middle-middle
+	my $mm = [$self->right / 2, $self->bottom /2 ];        # middle-middle
 	my $lm = [$self->left, $self->bottom / 2];  # left-middle
 	my $mb = [$self->right / 2, $self->bottom]; # middle-bottom
 	
