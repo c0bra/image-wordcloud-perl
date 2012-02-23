@@ -146,8 +146,21 @@ has 'boundingbox' => (
 	isa => 'Image::WordCloud::Word::BoundingBox',
 	is  => 'ro',
 	init_arg => undef,
+	lazy    => 1,
+	builder => '_build_boundingbox',
 	#default => sub { Image::WordCloud::Word::BoundingBox->new(word => shift) }
 );
+
+sub _build_boundingbox {
+	my $self = shift;
+	
+	return Image::WordCloud::Word::BoundingBox->new(
+		word    => $self,
+		lefttop => [$self->x, $self->y],
+		width   => $self->width,
+		height  => $self->height,
+	);
+}
 
 #==============================================================================#
 # Methods

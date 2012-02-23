@@ -898,13 +898,13 @@ sub _build_playing_field {
 	# Get the image bounds
 	my ($left, $top, $right, $bottom) = $self->_image_bounds();
 	
-	my $pf = Image::WordCloud::PlayingField(
+	my $pf = Image::WordCloud::Box(
 		topleft     => [$left, $top],
 		rightbottom => [$right, $bottom],
 	);
 	
 	# Build the spatial index nodetree
-	$pf->build_nodes();
+	$pf->recurse_split4();
 	
 	$self->playingfield( $pf );
 	

@@ -684,9 +684,12 @@ sub _image {
 sub boximage {
 	my $self = shift;
 	
+	my $debug = $ENV{IWC_DEBUG}; # save
+	
 	$ENV{IWC_DEBUG} = 1;
 	$self->box();
-	$ENV{IWC_DEBUG} = 0;
+	
+	$ENV{IWC_DEBUG} = $debug; # restore
 	
 	return $self->gd;
 }
