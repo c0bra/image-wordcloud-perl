@@ -2,7 +2,7 @@ package Image::WordCloud::Box;
 
 use namespace::autoclean;
 use Moose;
-use MooseX::Types::Moose qw( ArrayRef HashRef Str );
+use MooseX::Types::Moose qw( Int Str ArrayRef HashRef );
 use Moose::Util::TypeConstraints;
 use Data::GUID;
 use Carp qw(croak);
@@ -15,6 +15,11 @@ our $MIN_AREA = 200;
 #==============================================================================#
 # Attributes
 #==============================================================================#
+
+has 'child_index' => (
+	isa => Int,
+	is => 'ro',
+);
 
 has 'guid' => (
 	isa      => Str,
@@ -32,6 +37,7 @@ has 'lefttop' => (
 		left => 'x',
 		top  => 'y',
 		x    => 'x',
+		y    => 'y',
 	}
 );
 
@@ -42,7 +48,6 @@ has 'rightbottom' => (
 	handles => {
 		right  => 'x',
 		bottom => 'y',
-		y      => 'y',
 	},
 	lazy_build => 1
 );
@@ -110,6 +115,7 @@ has 'children' => (
 	init_arg => undef,
 	default  => sub { {} },
 	handles  => {
+		list_children   => 'values',
 		set_child       => 'set',
     get_child       => 'get',
     has_no_children => 'is_empty',
@@ -146,23 +152,27 @@ sub BUILD {
 sub split4 {
 	my $self = shift;
 	
+	#printf "A: %s, MA: %s\n", $self->area, $self->min_area;
+	
 	# Don't split this box up if it's below the minimum area threshold
 	if ($self->area < $self->min_area) {
+		#printf "RETURNING - A: %s, MA: %s\n", $self->area, $self->min_area;
 		return;
 	}
 	
 	# Split this box into four pieces
 	#   NOTE: X comes before Y, hence the naming convention
-	my $lt = [$self->lefttop->x, $self->lefttop->y];
-	my $rb = [$self->rightbottom->x, $self->rightbottom->y];
-	my $mt = [$self->right / 2, $self->top];    # middle-top
-	my $rm = [$self->right, $self->bottom / 2]; # right-middle
-	my $mm = [$self->right / 2, $self->bottom /2 ];        # middle-middle
-	my $lm = [$self->left, $self->bottom / 2];  # left-middle
-	my $mb = [$self->right / 2, $self->bottom]; # middle-bottom
+	my $lt = [$self->lefttop->x,                  $self->lefttop->y];             # left-top
+	my $rb = [$self->rightbottom->x,              $self->rightbottom->y];         # right-bottom
+	my $mt = [$self->x + $self->width / 2,        $self->top];                    # middle-top
+	my $rm = [$self->right,                       $self->y + $self->height /2 ];  # right-middle
+	my $mm = [$self->x + $self->width / 2,        $self->y + $self->height /2 ];  # middle-middle
+	my $lm = [$self->left,                        $self->y + $self->height /2 ];  # left-middle
+	my $mb = [$self->x + $self->width / 2,        $self->bottom];                 # middle-bottom
 	
 	my @children = ();
 	
+	my $i = 0;
 	foreach my $coord_set (
 		[$lt, $mm], # Top-left box
 		[$mt, $rm], # Top-right box
@@ -171,6 +181,7 @@ sub split4 {
 	) {
 		
 		my $box = $self->add_child_box(
+		  child_index => $i,
 			lefttop     => $coord_set->[0],
 			rightbottom => $coord_set->[1],
 		);
@@ -183,17 +194,20 @@ sub split4 {
 
 # Split this box in four child boxes, and recurse down them
 sub recurse_split4 {
-	my $self = shift;
+	my $self   = shift;
 	
 	my @children = $self->split4();
 	
-	if (@children) {
+	if (scalar @children > 0) {
+		my $i = 0;
 		foreach my $child (@children) {
+			$i++;
+			
 			$child->recurse_split4();
 		}
 	}
 	
-	return $self;
+	return 1;
 }
 
 # Split this node into two halves
@@ -211,31 +225,35 @@ sub split2 {
 	if ($self->height > $self->width) {
 		# Add the first box
 		$box1 = $self->add_child_box(
-			lefttop => [ $self->lefttop->xy ],
-			width   => $self->width,
-			height  => $self->height / 2,
+			child_index => 1,
+			lefttop     => [ $self->lefttop->xy ],
+			width       => $self->width,
+			height      => $self->height / 2,
 		);
 		
 		# Add the second box
 		$box2 = $self->add_child_box(
-			lefttop => [ $self->left, $self->bottom / 2 ],
-			width   => $self->width,
-			height  => $self->height / 2,
+		  child_index => 2,
+			lefttop     => [ $self->left, $self->bottom / 2 ],
+			width       => $self->width,
+			height      => $self->height / 2,
 		);
 	}
 	else {
 		# Add the first box
 		$box1 = $self->add_child_box(
-			lefttop => [ $self->lefttop->xy ],
-			width   => $self->width / 2,
-			height  => $self->height,
+		  child_index => 1,
+			lefttop     => [ $self->lefttop->xy ],
+			width       => $self->width / 2,
+			height      => $self->height,
 		);
 		
 		# Add the second box
 		$box2 = $self->add_child_box(
-			lefttop => [ $self->right / 2, $self->top ],
-			width   => $self->width / 2,
-			height  => $self->height,
+		  child_index => 2,
+			lefttop     => [ $self->right / 2, $self->top ],
+			width       => $self->width / 2,
+			height      => $self->height,
 		);
 	}
 	
@@ -262,7 +280,7 @@ sub add_child_box {
 	
 	my @args = @_;
 	
-	my $box = __PACKAGE__->new(
+	my $box = ref($self)->new(
 		parent => $self,
 		@_
 	);
@@ -272,6 +290,23 @@ sub add_child_box {
 	);
 	
 	return $box;
+}
+
+# Recurse through all our children
+sub count_children {
+	my ($self, $countref) = @_;
+	
+	if (! defined $countref) {
+		my $count = 0;
+		$countref = \$count;
+	}
+	
+	foreach my $child ($self->list_children) {
+		$$countref = $$countref + 1;
+		$child->count_children($countref);
+	}
+	
+	return $$countref;
 }
 
 #=====================#
