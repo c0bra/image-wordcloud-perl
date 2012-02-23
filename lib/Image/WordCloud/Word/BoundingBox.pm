@@ -80,6 +80,16 @@ sub _min_box_size {
 	return $min;
 }
 
+# Have to update these because the word is drawn UP down down, i.e. x,y is in the lower-left corner
+around 'top', 'bottom', 'y' => sub {
+	  my $orig = shift;
+		my $self = shift;
+		
+		my $dim = $self->$orig();
+		
+		return $dim - $self->height;
+};
+
 #=========================#
 # Dimensions and Position #
 #=========================#
