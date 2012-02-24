@@ -239,6 +239,15 @@ sub stroke_bbox {
 	return $self;
 }
 
+sub stroke_bbox_outline {
+	my $self = shift;
+	
+	$self->boundingbox->_allocateColors;
+	$self->gd->rectangle($self->boundingbox->left, $self->boundingbox->top, $self->boundingbox->right, $self->boundingbox->bottom, $self->boundingbox->gd_highlightcolor);
+	
+	return $self;
+}
+
 __PACKAGE__->meta->make_immutable;
 
 1;
