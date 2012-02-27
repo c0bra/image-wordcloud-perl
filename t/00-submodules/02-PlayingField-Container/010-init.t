@@ -3,23 +3,20 @@ use warnings;
 
 use feature qw(say);
 use Test::More tests => 1;
-use Test::Moose;
-use Benchmark qw(timethese);
+use Test::Fatal;
 
 use Image::WordCloud::PlayingField::Container;
 
-#timethese(5, {
-#	'blah' => sub {
-		my $c = Image::WordCloud::PlayingField::Container->new(
-			lefttop => [0, 0],
-			width   => 800,
-			height  => 800,
-		);
-		
-		$c->init_field();
-#	}
-#});
+my $c = Image::WordCloud::PlayingField::Container->new(
+	lefttop => [0, 0],
+	width   => 30,
+	height  => 30,
+);
 
-#use Data::Dumper; print Dumper($c);
+is(
+	exception { $c->init_field() },
+	undef,
+	"init_field() doesn't die"
+);
 
-#say "Child count: " . $c->count_children;
+# TODO: make sure the number of children matches what we should create based on the min_area attribute
