@@ -20,6 +20,7 @@ requires 'MooseX::Aliases';
 requires 'MooseX::Types::Moose';
 requires 'Params::Validate';
 requires 'List::Util';
+requires 'Scalar::Util';
 requires 'File::Spec';
 requires 'File::Find::Rule';
 requires 'File::ShareDir';
