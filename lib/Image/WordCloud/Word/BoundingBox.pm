@@ -81,24 +81,61 @@ sub _min_box_size {
 }
 
 # Have to update these because the word is drawn UP down down, i.e. x,y is in the lower-left corner
-around 'top', 'bottom', 'y' => sub {
-	  my $orig = shift;
-		my $self = shift;
-		
-		my $dim = $self->$orig();
-		
-		return $dim - $self->height;
-};
+#around 'top', 'bottom', 'y' => sub {
+#	  my $orig = shift;
+#		my $self = shift;
+#		
+#		my $dim = $self->$orig();
+#		
+#		return $dim - $self->height;
+#};
 
 #=========================#
 # Dimensions and Position #
 #=========================#
 
 # NOTE: GD::Text::Align's boundingbox() method returns 8 elements:
-#   (x1,y1) lower left corner
-#   (x2,y2) lower right corner
-#   (x3,y3) upper right corner
-#   (x4,y4) upper left corner
+#   (x1,y1) lower left corner  0, 1
+#   (x2,y2) lower right corner 2, 3
+#   (x3,y3) upper right corner 4, 5
+#   (x4,y4) upper left corner  6, 7
+
+# Return the GD::Text::Align bounding box dimensions for the Word's current position and angle
+sub gdtext {
+	my $self = shift;
+	return $self->word->gdtext->bounding_box($self->word->xy, $self->word->angle);
+}
+
+sub lefttop {
+	my $self = shift;
+	return ($self->gdtext)[6,7];
+}
+sub rightbottom {
+	my $self = shift;
+	return ($self->gdtext)[2,3];
+}
+sub top {
+	my $self = shift;
+	return ($self->gdtext)[5];
+}
+sub y {
+	return shift->top();	
+}
+sub bottom {
+	my $self = shift;
+	return ($self->gdtext)[1];
+}
+sub left {
+	my $self = shift;
+	return ($self->gdtext)[0];
+}
+sub x  {
+	return shift->left();
+}
+sub right {
+	my $self = shift;
+	return ($self->gdtext)[2];
+}
 
 sub width  {
 	my $self = shift;
