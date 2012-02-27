@@ -16,17 +16,29 @@ has 'words' => (
 	isa        => 'ArrayRef[Image::WordCloud::Word]',
 	lazy       => 1,
 	default    => sub { [] },
-	default => sub { [] },
   handles => {
-  	  list_words     => 'elements',
-      all_words      => 'elements',
-      add_word       => 'push',
+  		words          => 'elements',
+  		list_words     => 'elements',
+      #add_word       => 'push',
+      push_words     => 'push',
       count_words    => 'count',
       has_words      => 'count',
       has_no_words   => 'is_empty',
       sorted_words   => 'sort',
   },
 );
+
+sub add_word {
+	my ($self, $word) = @_;
+	
+	# Add the word to this container's list of words
+	$self->push_words($word);
+	
+	# Set this object as the word's container
+	$word->container( $self );
+	
+	return $self;
+}
 
 sub init_field {
 	my $self = shift;
@@ -35,8 +47,7 @@ sub init_field {
 }
 
 sub find_container {
-	my $self = shift;
-	my $word = shift;
+	my ($self, $word) = @_;
 	
 	my $min_container;
 	
@@ -59,6 +70,35 @@ sub find_container {
 	}
 	
 	return $min_container;
+}
+
+# Get a list of all the word objects
+sub all_parent_words {
+	my $self = shift;
+	
+	my %words = ();
+	
+	# Add this container's words
+	foreach my $word ($self->words) {
+		$words{ $word->text} = $word;
+	}
+	
+	# Get the parent container's words and IT'S parent's words (and so on)
+	if ($self->parent) {
+		my $pwords = $self->parent->all_parent_words();
+		
+		foreach my $word (values %$pwords) {
+			$words{ $word->text} = $word;
+		}
+	}
+	
+	return wantarray ? values %words : \%words;
+}
+
+sub recurse_words {
+	my $self = shift;
+	
+	my %words = ();
 }
 
 __PACKAGE__->meta->make_immutable;

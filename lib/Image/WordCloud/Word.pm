@@ -4,6 +4,7 @@ use namespace::autoclean;
 use Moose;
 use MooseX::Types::Moose qw(Str Int Num);
 use Moose::Util::TypeConstraints;
+use Scalar::Util qw(refaddr);
 use GD;
 use GD::Text::Align;
 
@@ -151,6 +152,11 @@ has 'boundingbox' => (
 	#default => sub { Image::WordCloud::Word::BoundingBox->new(word => shift) }
 );
 
+has 'container' => (
+	isa => 'Image::WordCloud::PlayingField::Container',
+	is  => 'rw',
+);
+
 sub _build_boundingbox {
 	my $self = shift;
 	
@@ -175,6 +181,21 @@ sub _build_boundingbox {
 #============#
 # Collisions #
 #============#
+
+sub colliders {
+	my $self = shift;
+	
+	my @colliders = $self->container->all_parent_words();
+	
+	my @grepped = ();
+	foreach my $c (@colliders) {
+		if (refaddr $c != refaddr $self) {
+			push @grepped, $c;
+		}
+	}
+	
+	return @grepped;
+}
 
 # Return true if this word collides with another
 sub collides {

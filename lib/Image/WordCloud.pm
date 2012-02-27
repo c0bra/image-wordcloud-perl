@@ -12,7 +12,7 @@ use MooseX::Types::Moose qw(Int Num Bool Str);
 
 use Image::WordCloud::Types qw(ArrayRefOfStrs Color Percent ImageSize);
 use Image::WordCloud::Word;
-use Image::WordCloud::Box;
+use Image::WordCloud::PlayingField::Container;
 use Image::WordCloud::StopWords::EN qw(%STOP_WORDS);
 
 use Carp qw(carp croak confess);
@@ -169,7 +169,7 @@ has 'fonts' 				=> ( isa => ArrayRefOfStrs, is => 'rw', init_arg => undef, coerc
 #has 'fonts_changed'	=> { isa => Bool, 					is => 'ro', init_args => undef };
 
 has 'playingfield' => (
-	isa 		 => 'Image::WordCloud::Box',
+	isa 		 => 'Image::WordCloud::PlayingField::Container',
 	is       => 'rw',
 	init_arg => undef,
 );
@@ -406,6 +406,10 @@ sub cloud {
 	my $max_count = $self->{max_count};
 	my $scaling = $max_points / $max_count;
 	
+	# Create the "playing field" we'll be putting words in. It is a recursive hierarchy of nodes that words
+	#   can be put in
+	$self->_build_playing_field();
+	
 	# For each word we have
 	my @areas = ();
 	
@@ -507,8 +511,26 @@ sub cloud {
 			
 			$text->xy($this_x, $this_y);
 			
+			# Get this word's container
+			my $container = $self->playingfield->find_container( $text );
+			
+			if (! $container) {
+				croak sprintf "Couldn't find container for word '%s' at %s,%s", $text->text, $text->xy;
+			}
+			
+			$container->add_word( $text );
+			
+			# Get the words that this word can possibly collide with.
+		  my @colliders = $text->colliders();
+		  
+		  use Data::Dumper;
+		  printf "Collider count: %s\n", scalar @colliders;
+		  #printf "Blah: %s\n", Dumper $colliders[0]->container;
+		  printf "Blah: %s\n", ref $colliders[0];
+		  print "Collider Words: " . join(", ", map { $_->text } @colliders) . "\n";
+			
 			my $collision = 1;
-			my $col_iter = 1; # Iterator to pass to M::P::TheodorusSpiral get new X,Y coords
+			my $col_iter  = 1; # Iterator to pass to M::P::TheodorusSpiral get new X,Y coords
 			
 			# Within an area of 250k pixels, it seems to work okay.
 			#my $col_iter_increment = int($self->width * $self->height * 0.00002); # Increment to increase $col_iter by on each loop
@@ -527,7 +549,7 @@ sub cloud {
 		    my %checked = ();
 		    
 		    # Go through every word on the image and see if this word collides with it
-				foreach my $collider (values %collide_stash, @colliders) {
+				foreach my $collider (values %collide_stash, @colliders) {					
 					next if exists $checked{ $collider->text };
 					
 					if ($text->collides( $collider )) {
@@ -611,6 +633,8 @@ sub cloud {
 		}
 		
 		$text->xy($x, $y)->draw();
+		my $container = $self->playingfield->find_container( $text );
+		$container->add_word( $text );
 		
 		#print "XY: $x,$y\n";
 		#print "Text xy: " . join(',', $text->xy). "\n";
@@ -898,13 +922,13 @@ sub _build_playing_field {
 	# Get the image bounds
 	my ($left, $top, $right, $bottom) = $self->_image_bounds();
 	
-	my $pf = Image::WordCloud::Box(
-		topleft     => [$left, $top],
+	my $pf = Image::WordCloud::PlayingField::Container->new(
+		lefttop     => [$left, $top],
 		rightbottom => [$right, $bottom],
 	);
 	
 	# Build the spatial index nodetree
-	$pf->recurse_split4();
+	$pf->init_field();
 	
 	$self->playingfield( $pf );
 	
