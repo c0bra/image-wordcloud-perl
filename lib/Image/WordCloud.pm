@@ -480,8 +480,6 @@ sub cloud {
       $y = $center_y + ($h / 4); # I haven't done the math see why dividing the height by 4 works, but it does
 
       # Move the first word around a little, but not TOO much!
-      #($x, $y) = $self->_init_coordinates($gd, $text, $x, $y);
-
 			($x, $y) = $self->_init_word_coordinates($gd, $text);
 		}
 		else {
@@ -770,55 +768,6 @@ sub _init_word_coordinates {
 	return ($x, $y);
 }
 
-# Given an initial starting point, move 
-sub _init_coordinates {
-	my $self = shift;
-	my ($gd, $text, $x, $y) = @_;
-	
-	croak "No X coordinate specified" if ! defined $x;
-	croak "No Y coordinate specified" if ! defined $y;
-	
-	# Make the boundaries for the words
-	my ($left_bound, $top_bound, $right_bound, $bottom_bound) = $self->_image_bounds();
-	
-	my $fits = 0;
-	my $c = 0;
-	while (! $fits) {
-		# Re-initialize the coords
-		my $try_x = $x;
-		my $try_y = $y;
-		
-		# Move the x,y coords around a little (width 10% of the image's dimensions so we stay mostly centered)
-		$try_x += $self->_random_int_between($gd->width * .1 * -1, $gd->width * .1 );
-		$try_y += $self->_random_int_between($gd->height * .1 * -1, $gd->height * .1);
-		
-		# Make sure the new coordinates aren't outside the bounds of the image!
-		my ($newx, $newy, $newx2, $newy2) = ( $text->gdtext_bounding_box($try_x, $try_y) )[6,7,2,3];
-		
-		if ($newx < $left_bound || $newx2 > $right_bound ||
-				$newy < $top_bound  || $newy2 > $bottom_bound) {
-				
-				$fits = 0;
-		}
-		else {
-				$x = $try_x;
-				$y = $try_y;
-				
-				$fits = 1;
-		}
-		
-		# Only try 50 times
-		$c++;
-		
-		if ($c > 50) {
-			#carp "Tried over 50 times to fit a word";
-			last;
-		}
-	}
-	
-	return ($x, $y);
-}
-
 # Return new coordinates ($x, $y) that are no more than $bound_x or $bound_y digits away from the center of GD image $gd
 sub _new_coordinates {
 	my $self = shift;
@@ -840,7 +789,7 @@ sub _new_coordinates {
 	# Move the center of this word within 50% of the area of the first word's bounding box
 	#$x += $self->_random_int_between($bound_x * -1 * .25, $bound_x * .25);
 	#$y += $self->_random_int_between($bound_y * -1 * .25, $bound_y * .25);
-					
+	
 	$x += $gd->width / 2;
 	$y += $gd->height / 2;
 	
