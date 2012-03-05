@@ -515,7 +515,7 @@ sub cloud {
 			my $container = $self->playingfield->find_container( $text );
 			
 			if (! $container) {
-				croak sprintf "Couldn't find container for word '%s' at %s,%s", $text->text, $text->xy;
+				confess sprintf "Couldn't find container for word '%s' at %s,%s", $text->text, $text->xy;
 			}
 			
 			$container->add_word( $text );
@@ -636,10 +636,17 @@ sub cloud {
 		my $container = $self->playingfield->find_container( $text );
 		$container->add_word( $text );
 		
+		$container->print_all_words();
+		
+		my $red = $gd->colorAllocate(255,0,0);
+		$gd->rectangle($container->ltrb, $red);
+		$text->draw();
+		$text->stroke_bbox_outline();
+		
 		#print "XY: $x,$y\n";
 		#print "Text xy: " . join(',', $text->xy). "\n";
 		
-		$text->stroke_bbox();
+		#$text->stroke_bbox();
 		
 		push(@colliders, $text);
 		

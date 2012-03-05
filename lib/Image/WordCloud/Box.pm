@@ -19,6 +19,8 @@ our $MIN_AREA = 200;
 has 'child_index' => (
 	isa => Int,
 	is => 'ro',
+	required => 1,
+	default  => 0,
 );
 
 has 'guid' => (
@@ -58,6 +60,11 @@ sub _build_rightbottom {
 	croak "Must specify height and width in order to set rightbottom" unless $self->has_height && $self->has_width;
 	
 	return [$self->lefttop->x + $self->width, $self->lefttop->y + $self->height];
+}
+
+sub ltrb {
+	my $self = shift;
+	return $self->top, $self->left, $self->right, $self->bottom;
 }
 
 has 'width' => (
@@ -145,6 +152,21 @@ sub BUILD {
 	$self->width;
 }
 
+#===========#
+# Utilities #
+#===========#
+
+sub top_parent {
+	my $self = shift;
+	
+	if ($self->parent) {
+		return $self->parent->top_parent;
+	}
+	else {
+		return $self;
+	}
+}
+
 #========================#
 # Recursive box building #
 #========================#
@@ -187,6 +209,8 @@ sub split4 {
 		);
 		
 		push @children, $box;
+		
+		$i++;
 	}
 	
 	return @children;

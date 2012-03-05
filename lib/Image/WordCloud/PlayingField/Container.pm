@@ -12,29 +12,44 @@ extends 'Image::WordCloud::Box';
 #==============================================================================#
 
 has 'words' => (
-	traits     => ['Array'],
-	isa        => 'ArrayRef[Image::WordCloud::Word]',
+	traits     => ['Hash'],
+	isa        => 'HashRef[Image::WordCloud::Word]',
 	lazy       => 1,
-	default    => sub { [] },
+	default    => sub { {} },
   handles => {
-  		words          => 'elements',
-  		list_words     => 'elements',
-      #add_word       => 'push',
-      push_words     => 'push',
-      count_words    => 'count',
-      has_words      => 'count',
-      has_no_words   => 'is_empty',
-      sorted_words   => 'sort',
+		#words          => 'elements',
+		#list_words     => 'elements',
+    ##add_word       => 'push',
+    #push_words     => 'push',
+    #count_words    => 'count',
+    #has_words      => 'count',
+    #has_no_words   => 'is_empty',
+    #sorted_words   => 'sort',
+    
+    words         => 'values',
+    list_words    => 'values',
+    set_word      => 'set',
+	  get_word      => 'get',
+	  num_words     => 'count',
+	  _delete_word  => 'delete',
+	  pairs         => 'kv',
   },
 );
+
+sub remove_word {
+	my ($self, $word) = @_;
+	
+	$self->_delete_word($word->text);
+}
 
 sub add_word {
 	my ($self, $word) = @_;
 	
 	# Add the word to this container's list of words
-	$self->push_words($word);
+	$self->set_word($word->text => $word);
 	
 	# Set this object as the word's container
+	$word->container->remove_word( $word ) if $word->has_container;
 	$word->container( $self );
 	
 	return $self;
@@ -80,6 +95,7 @@ sub all_parent_words {
 	
 	# Add this container's words
 	foreach my $word ($self->words) {
+		printf "	Adding word: %s\n", $word->text;
 		$words{ $word->text} = $word;
 	}
 	
@@ -88,6 +104,7 @@ sub all_parent_words {
 		my $pwords = $self->parent->all_parent_words();
 		
 		foreach my $word (values %$pwords) {
+			printf "	Adding word: %s\n", $word->text;
 			$words{ $word->text} = $word;
 		}
 	}
@@ -95,10 +112,35 @@ sub all_parent_words {
 	return wantarray ? values %words : \%words;
 }
 
-sub recurse_words {
+sub parent_header {
 	my $self = shift;
 	
-	my %words = ();
+	my $header = "";
+	
+	if ($self->parent) {
+		$header = $self->parent->parent_header;
+		$header .= "-";
+	}
+	
+	$header .= $self->child_index;
+	
+	return $header;
+}
+
+sub print_all_words {
+	my $self = shift;
+	
+	#if ($self->list_words) {
+		print $self->parent_header . "\n";
+		
+		foreach my $word ($self->list_words) {
+			printf "    %s\n", $word->text; 
+		}
+		
+		foreach my $child ($self->list_children) {
+			$child->print_all_words;
+		}
+	#}
 }
 
 __PACKAGE__->meta->make_immutable;

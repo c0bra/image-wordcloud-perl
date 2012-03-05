@@ -117,7 +117,26 @@ sub gdtext_bounding_box {
 }
 
 # x,y coordinates
-has [ 'x', 'y' ] => ( isa => Num, is => 'rw', default => 0 );
+has [ 'x', 'y' ] => (
+	isa => Num,
+	is => 'rw',
+	default => 0,
+	#trigger => \&_trigger_x_and_y # Don't want to do this, as it will happen EVERY time we set X or Y, which happens sometimes when the word is outside the image
+);
+
+sub _trigger_x_and_y {
+	my $self = shift;
+	
+	if ($self->container) {
+		my $new_container = $self->container->top_parent->find_container( $self );
+		
+		if ($new_container) {		
+			$self->container->remove_word($self);
+			$new_container->add_word( $self );
+		}
+	}
+}
+
 sub xy {
 	my $self = shift;
 	
@@ -144,17 +163,10 @@ has 'angle' => (
 
 # Bounding box around this word
 has 'boundingbox' => (
-	isa => 'Image::WordCloud::Word::BoundingBox',
-	is  => 'ro',
-	init_arg => undef,
-	lazy    => 1,
-	builder => '_build_boundingbox',
-	#default => sub { Image::WordCloud::Word::BoundingBox->new(word => shift) }
-);
-
-has 'container' => (
-	isa => 'Image::WordCloud::PlayingField::Container',
-	is  => 'rw',
+	isa        => 'Image::WordCloud::Word::BoundingBox',
+	is         => 'ro',
+	init_arg   => undef,
+	lazy_build => 1,
 );
 
 sub _build_boundingbox {
@@ -167,6 +179,13 @@ sub _build_boundingbox {
 		height  => $self->height,
 	);
 }
+
+has 'container' => (
+	isa       => 'Image::WordCloud::PlayingField::Container',
+	is        => 'rw',
+	predicate => 'has_container',
+);
+
 
 #==============================================================================#
 # Methods
