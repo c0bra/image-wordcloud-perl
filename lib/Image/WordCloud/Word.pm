@@ -184,6 +184,7 @@ has 'container' => (
 	isa       => 'Image::WordCloud::PlayingField::Container',
 	is        => 'rw',
 	predicate => 'has_container',
+	weak_ref  => 1,
 );
 
 

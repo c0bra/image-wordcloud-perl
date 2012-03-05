@@ -4,6 +4,7 @@ use namespace::autoclean;
 use Moose;
 use MooseX::Types::Moose qw( ArrayRef HashRef );
 use Carp qw(croak);
+use Scalar::Util qw(refaddr);
 
 extends 'Image::WordCloud::Box';
 
@@ -42,14 +43,16 @@ sub remove_word {
 	$self->_delete_word($word->text);
 }
 
+# Add the word to this container's list of words
 sub add_word {
 	my ($self, $word) = @_;
 	
-	# Add the word to this container's list of words
 	$self->set_word($word->text => $word);
 	
 	# Set this object as the word's container
-	$word->container->remove_word( $word ) if $word->has_container;
+	if ($word->has_container && refaddr $word->container != refaddr $self) {
+		$word->container->remove_word( $word );
+	}
 	$word->container( $self );
 	
 	return $self;
@@ -95,7 +98,6 @@ sub all_parent_words {
 	
 	# Add this container's words
 	foreach my $word ($self->words) {
-		printf "	Adding word: %s\n", $word->text;
 		$words{ $word->text} = $word;
 	}
 	
@@ -104,7 +106,6 @@ sub all_parent_words {
 		my $pwords = $self->parent->all_parent_words();
 		
 		foreach my $word (values %$pwords) {
-			printf "	Adding word: %s\n", $word->text;
 			$words{ $word->text} = $word;
 		}
 	}
@@ -127,20 +128,30 @@ sub parent_header {
 	return $header;
 }
 
-sub print_all_words {
+sub print_words_below {
 	my $self = shift;
 	
 	#if ($self->list_words) {
-		print $self->parent_header . "\n";
+		print $self->parent_header . " | " . $self->guid . "\n";
 		
 		foreach my $word ($self->list_words) {
-			printf "    %s\n", $word->text; 
+			printf "    %s\n", $word->text;
 		}
 		
 		foreach my $child ($self->list_children) {
-			$child->print_all_words;
+			$child->print_words_below;
 		}
 	#}
+	
+	return $self;
+}
+
+sub print_all_words {
+	my $self = shift;
+	
+	$self->top_parent()->print_words_below();
+	
+	return $self;
 }
 
 __PACKAGE__->meta->make_immutable;

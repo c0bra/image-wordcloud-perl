@@ -433,7 +433,7 @@ sub cloud {
 	
 	#foreach my $word ( shift @word_keys, shuffle @word_keys ) {
 	foreach my $word ( @word_keys ) {
-		### Placing word: $word
+		printf "\n\nPLACING WORD: $word\n";
 		
 		our $COMPARISONS = 0;
 		our $MOVES = 0;
@@ -515,18 +515,13 @@ sub cloud {
 			my $container = $self->playingfield->find_container( $text );
 			
 			if (! $container) {
-				confess sprintf "Couldn't find container for word '%s' at %s,%s", $text->text, $text->xy;
+				confess sprintf "Couldn't find container for word '%s' at initial placement %s,%s", $text->text, $text->xy;
 			}
 			
 			$container->add_word( $text );
 			
 			# Get the words that this word can possibly collide with.
 		  my @colliders = $text->colliders();
-		  
-		  use Data::Dumper;
-		  printf "Collider count: %s\n", scalar @colliders;
-		  #printf "Blah: %s\n", Dumper $colliders[0]->container;
-		  printf "Blah: %s\n", ref $colliders[0];
 		  print "Collider Words: " . join(", ", map { $_->text } @colliders) . "\n";
 			
 			my $collision = 1;
@@ -623,8 +618,6 @@ sub cloud {
 				}
 			}
 			
-			### Collision: $collision
-			
 			# Backtrack the coordinates towards the center
 			#($this_x, $this_y) = $self->_backtrack_coordinates($text, \@colliders, $this_x, $this_y, $gd);
 			
@@ -634,9 +627,18 @@ sub cloud {
 		
 		$text->xy($x, $y)->draw();
 		my $container = $self->playingfield->find_container( $text );
+		if (! $container) {
+			confess sprintf "Couldn't find container for word '%s' at final placement %s,%s (word dimensions: %sw, %sh\n", $text->text, $text->xy, $text->width, $text->height;
+		}
+		
 		$container->add_word( $text );
 		
-		$container->print_all_words();
+		#print "\n\nPRINTING ALL WORDS\n";
+		#if ($word eq 'laws') {
+			#$container->print_all_words();
+			#use Data::Dumper; print Dumper $container; exit;
+		#}
+		#print "DONE PRINTING ALL WORDS\n\n\n";
 		
 		my $red = $gd->colorAllocate(255,0,0);
 		$gd->rectangle($container->ltrb, $red);
