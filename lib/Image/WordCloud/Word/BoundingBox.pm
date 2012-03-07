@@ -29,7 +29,7 @@ has 'word' => (
 # Utility GD object for testing
 has 'gd' => (
 	isa => 'GD::Image',
-	is  => 'ro',
+	is  => 'rw',
 	required => 1,
 	init_arg => undef,
 	builder  => '_build_gd',
@@ -38,6 +38,16 @@ sub _build_gd {
 	my $self = shift;
 	return GD::Image->new(10, 10, 1);
 }
+
+#===========================#
+# Attributes for Collisions #
+#===========================#
+
+has ['is_empty', 'is_full', 'is_hit'] => (
+	isa => 'Bool',
+	is  => 'rw',
+	init_arg => undef,
+);
 
 #==============#
 # Bounding box #
@@ -74,7 +84,7 @@ sub _area {
 sub _min_box_size {
 	my $self = shift;
 	
-	my $min = $self->_area * .0025;
+	my $min = $self->top_parent->_area * .0025;
 	$min = MIN_BOX_SIZE if $min < MIN_BOX_SIZE;
 	
 	return $min;
@@ -106,80 +116,105 @@ sub gdtext {
 	return $self->word->gdtext->bounding_box($self->word->xy, $self->word->angle);
 }
 
+has ['temp_x_offset', 'temp_y_offset'] => (
+	isa     => 'Num',
+	is      => 'rw',
+	lazy    => 1,
+	default => 0,
+);
+
 sub lefttop {
 	my $self = shift;
-	return ($self->gdtext)[6,7];
+	return (
+		($self->gdtext)[6] + $self->top_parent->temp_x_offset,
+		($self->gdtext)[7] + $self->top_parent->temp_y_offset
+	);
 }
 sub rightbottom {
 	my $self = shift;
-	return ($self->gdtext)[2,3];
+	return (
+		($self->gdtext)[2] + $self->top_parent->temp_x_offset,
+		($self->gdtext)[3] + $self->top_parent->temp_y_offset
+	);
 }
 sub top {
 	my $self = shift;
-	return ($self->gdtext)[5];
+	return ($self->gdtext)[5] + $self->top_parent->temp_y_offset;
 }
 sub y {
-	return shift->top();	
+	return shift->top();
 }
 sub bottom {
 	my $self = shift;
-	return ($self->gdtext)[1];
+	return ($self->gdtext)[1] + $self->top_parent->temp_y_offset;
 }
 sub left {
 	my $self = shift;
-	return ($self->gdtext)[0];
+	return ($self->gdtext)[0] + $self->top_parent->temp_x_offset;
 }
 sub x  {
 	return shift->left();
 }
 sub right {
 	my $self = shift;
-	return ($self->gdtext)[2];
+	return ($self->gdtext)[2] + $self->top_parent->temp_x_offset;
+}
+
+sub zero_offset {
+	my $self = shift;
+	
+	# Set the temporary X offset to whatever it takes to get this bounding box's X value back to 0
+	$self->temp_x_offset( $self->x * -1 );
+	$self->temp_y_offset( $self->y * -1 );
+	
+	return $self;
+}
+
+sub restore_offset {
+	my $self = shift;
+	
+	# Set the temporary X offset to whatever it takes to get this bounding box's X value back to 0
+	$self->temp_x_offset( 0 );
+	$self->temp_y_offset( 0 );
+	
+	return $self;
 }
 
 sub width  {
 	my $self = shift;
 	
-	#return $self->word->width();
-	
-	return $self->coordinate_distance(
-		$self->topleft, $self->topright
-	);
+	return abs($self->right - $self->left);
 }
 
 sub height {
 	my $self = shift;
 	
-	#return $self->word->height();
-	
-	return $self->coordinate_distance(
-		$self->topleft, $self->bottomleft
-	);
+	return abs($self->bottom - $self->top);
 }
 
-sub bottomleft {
-	my $self = shift;
-	
-	return ($self->word->gdtext->bounding_box($self->word->xy, $self->word->angle))[0,1];
-}
-
-sub bottomright {
-	my $self = shift;
-	
-	return ($self->word->gdtext->bounding_box($self->word->xy, $self->word->angle))[2,3];
-}
-
-sub topright {
-	my $self = shift;
-	
-	return ($self->word->gdtext->bounding_box($self->word->xy, $self->word->angle))[4,5];
-}
-
-sub topleft {
-	my $self = shift;
-	
-	return ($self->word->gdtext->bounding_box($self->word->xy, $self->word->angle))[6,7];
-}
+#sub bottomleft {
+#	my $self = shift;
+#	
+#	return ($self->word->gdtext->bounding_box($self->word->xy, $self->word->angle))[0,1];
+#}
+#
+#sub bottomright {
+#	my $self = shift;
+#	
+#	return ($self->word->gdtext->bounding_box($self->word->xy, $self->word->angle))[2,3];
+#}
+#
+#sub topright {
+#	my $self = shift;
+#	
+#	return ($self->word->gdtext->bounding_box($self->word->xy, $self->word->angle))[4,5];
+#}
+#
+#sub topleft {
+#	my $self = shift;
+#	
+#	return ($self->word->gdtext->bounding_box($self->word->xy, $self->word->angle))[6,7];
+#}
 
 sub coordinate_distance {
 	my ($self, $x1, $y1, $x2, $y2) = @_;
@@ -241,6 +276,16 @@ sub collides {
 # Returns true if this box collides with another box,
 #   given that this box is at a specific XY coordinate
 sub collides_at {
+		my ($self, $otherbox, $x, $y) = @_;
+		
+		## Compare the bounding boxes of the two words, starting with the biggest box and descending to the smallest until we get a hit
+		
+		
+}
+
+# Returns true if this box collides with another box,
+#   given that this box is at a specific XY coordinate
+sub collides_at2 {
 	my ($self, $otherbox, $x, $y) = @_;
 	
 	# First compare the man bounding boxes of the two words
@@ -446,7 +491,104 @@ sub _offset_boxes {
 	return $newboxes;
 }
 
+override 'recurse_split2' => sub {
+	my $self = shift;
+	
+	my ($box1, $box2) = $self->split2();
+	
+	# Only split if we got two children back from the split
+	if ($box1 && $box2) {
+		# Scan each box to see if it contains part of the word
+		#   Then for each box, if it's empty is empty nor full, continue to split them
+		foreach my $box ($box1, $box2) {
+			$box->scan_box_for_hits();
+			
+			if (! $box->is_empty && ! $box->is_full) {
+				$box->split2();
+			}
+		}
+	}
+	
+	return $self;
+};
+
+sub scan_box_for_hits {
+	my $self = shift;
+	
+	# Search through the pixels in this box for 
+	
+	my ($x, $y) = $self->lefttop();
+	
+	my $empty = undef;
+	my $full = undef;
+	my $found_fg = 0;
+	my $found_bg = 0;
+	while ($y <= $self->bottom) {
+		my $color = $self->top_parent->gd->getPixel($x, $y);
+		
+		# This pixel was a hit!
+		if ($color == $self->top_parent->gd_backcolor) {
+			$empty = 1 if ! defined $empty;
+			$found_bg = 1;
+		}
+		else {
+			$full = 1 if ! defined $full;
+			$found_fg = 1;
+		}
+		
+		# If we already know the box is neither full nor empty
+		#		(i.e. it has both back and forecolor) , stop looping over pixels.
+		last if $found_fg && $found_bg;
+		
+		$x++;
+		if ($x > $self->right) {
+			$x = $self->left;
+			$y++;
+		}
+	}
+	
+	# Every pixel in this box is the forecolor, no need to process it further
+	if (defined $full && $full && ! defined $empty && ! $empty) {
+		$self->is_full(1);
+		$self->is_hit(1);
+		
+		$self->top_parent->add_hitbox($self);
+	}
+	elsif (defined $empty && $empty && ! defined $full && ! $full) {
+		$self->is_empty(1);
+		
+		# ... don't need to do anything to empty boxes
+	}
+	# Neither full nor empty, still a hitbox though
+	else {
+		$self->is_hit(1);
+		
+		$self->top_parent->add_hitbox($self);
+	}
+	
+	return $self;
+}
+
+# Generate the hitbox tree for the image
 sub _generate_boxes {
+	my $self = shift;
+	
+	# Temporarily make this box look like it's at 0,0
+	$self->zero_offset();
+	
+	# Generate the GD image for creating the hitboxes
+	$self->top_parent->gd( $self->_image() );
+	
+	# Use ::Box's method to recursively split this box into
+	$self->recurse_split2();
+	
+	# Reset the temporary coordinate offsets
+	$self->restore_offset();
+	
+	return $self;
+}
+
+sub _generate_boxes2 {
 	my $self  = shift;
 	
 	my $gd = $self->_image();
@@ -539,7 +681,7 @@ sub _recurse_box {
 		my $color = $gd->getPixel($x, $y);
 		
 		# This pixel was a hit!
-		if ($color == $self->gd_backcolor) {
+		if ($color == $self->top_parent->gd_backcolor) {
 			$empty = 1 if ! defined $empty;
 			$found_bg = 1;
 		}
@@ -682,7 +824,7 @@ sub _box_height {
 sub _refresh_gd {
 	my $self = shift;
 	
-	$self->{gd} = GD::Image->new($self->word->width + 1, $self->word->height + 1, 1);
+	$self->gd( GD::Image->new($self->word->width + 1, $self->word->height + 1, 1) );
 	
 	$self->_allocateColors();
 	

@@ -641,7 +641,8 @@ sub cloud {
 		my $red = $gd->colorAllocate(255,0,0);
 		$gd->rectangle($container->ltrb, $red);
 		$text->draw();
-		$text->stroke_bbox_outline();
+		$text->stroke_bbox();
+		#$text->stroke_bbox_outline();
 		
 		#print "XY: $x,$y\n";
 		#print "Text xy: " . join(',', $text->xy). "\n";

@@ -250,7 +250,7 @@ sub split2 {
 		# Add the first box
 		$box1 = $self->add_child_box(
 			child_index => 1,
-			lefttop     => [ $self->lefttop->xy ],
+			lefttop     => [ $self->left, $self->top ],
 			width       => $self->width,
 			height      => $self->height / 2,
 		);
@@ -267,7 +267,7 @@ sub split2 {
 		# Add the first box
 		$box1 = $self->add_child_box(
 		  child_index => 1,
-			lefttop     => [ $self->lefttop->xy ],
+			lefttop     => [ $self->left, $self->top ],
 			width       => $self->width / 2,
 			height      => $self->height,
 		);
@@ -289,7 +289,7 @@ sub recurse_split2 {
 	
 	my ($box1, $box2) = $self->split2();
 	
-	# Only split if we got children back from the split
+	# Only split if we got two children back from the split
 	if ($box1 && $box2) {
 		$box1->split2();
 		$box2->split2();
@@ -308,6 +308,8 @@ sub add_child_box {
 		parent => $self,
 		@_
 	);
+	
+	inner();
 	
 	$self->set_child(
 		$box->guid => $box
@@ -373,6 +375,24 @@ sub detect_collision {
 		return 0;
 	}
 }
+
+## Check a collision between this box and another box
+#sub recursive_collision {
+#	my $self = shift;
+#	
+#	my $box = shift;
+#	
+#	return $self->recursive_collision_at($box, $self->x, $self->y);
+#}
+#
+#
+#sub recursive_collision_at {
+#	my $self = shift;
+#	
+#	my ($x, $y) = @_;
+#	
+#	# 1. Compare this box 
+#}
 
 __PACKAGE__->meta->make_immutable;
 
