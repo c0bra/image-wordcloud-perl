@@ -11,7 +11,6 @@ my $number_of_tests_run = 0;
 my $wc = new Image::WordCloud;
 
 my @rand_colors = $wc->_random_colors();
-use Data::Dumper; print Dumper(\@rand_colors);
 
 foreach my $c (@rand_colors) {
 	isa_ok($c, 'ARRAY',		"_random_colors() returns array or arrayrefs");

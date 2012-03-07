@@ -1,3 +1,23 @@
+2/17/2012
+* Turn all coordinate arrayrefs into I::W::Coordinate types
+* Add Hash and Array traits where appropriate
+* Move ::PlayingField::Node to just ::Node or whatever.
+* Make BoundingBox extend Node, and put the code to split
+  the box in Node as well. So all BoundingBox will need is
+  the extra image processing code. All the positioning and
+  collision detection can be in Node. 
+  - Or maybe also rename Node to Box? So it's more generic?
+    Dunno
+
+2/13/2012
+* Got hierarchical bounding boxes working in I::W::W::BoundingBox! Now we need
+  to speed it up a bit, it's pretty inefficient. We can benchmark by recording
+  the number of calls we make to getpixel(). And since we are scanning L to R,
+  we can stop when we reach a forecolor pixel and save all the previous blank
+  pixels as its own box.
+  - Right now we are doing 1.5-2.5x more pixel calls than we need to, the
+    ratio increases as the font size does.
+
 2/9/2012
 * [TESTS] Add tests for _collision_sides()
 

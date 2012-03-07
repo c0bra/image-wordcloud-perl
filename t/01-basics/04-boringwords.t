@@ -12,6 +12,7 @@ BEGIN {
 BEGIN {
 	use Image::WordCloud::StopWords::EN qw(%STOP_WORDS);
 	ok(scalar(keys %STOP_WORDS) > 0,		"Got more than 0 stop words from StopWords:: module");
+	note(sprintf 'Got %s stop words', scalar keys %STOP_WORDS);
 }
 
 my $wc = Image::WordCloud->new();

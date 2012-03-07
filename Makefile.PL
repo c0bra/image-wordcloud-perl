@@ -12,9 +12,15 @@ resources
 test_requires 'Test::More';
 test_requires 'Test::Fatal';
 test_requires 'Test::Warn';
+test_requires 'Test::Moose';
 
+requires 'Moose';
+requires 'namespace::autoclean';
+requires 'MooseX::Aliases';
+requires 'MooseX::Types::Moose';
 requires 'Params::Validate';
 requires 'List::Util';
+requires 'Scalar::Util';
 requires 'File::Spec';
 requires 'File::Find::Rule';
 requires 'File::ShareDir';
@@ -22,6 +28,8 @@ requires 'GD';
 requires 'GD::Text::Align';
 requires 'Color::Scheme';
 requires 'Math::PlanePath::TheodorusSpiral';
+requires 'Math::Trig';
+requires 'Data::GUID';
 
 install_share;
 
