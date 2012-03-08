@@ -7,6 +7,8 @@ use Moose::Util::TypeConstraints;
 use Data::GUID;
 use Carp qw(croak);
 
+with 'MooseX::Clone';
+
 use Image::WordCloud::Types qw( PosInt );
 use Image::WordCloud::Coordinate;
 
@@ -31,6 +33,7 @@ has 'guid' => (
 );
 
 has 'lefttop' => (
+	traits   => ['Clone'],
 	isa      => 'Image::WordCloud::Coordinate',
 	is       => 'ro',
 	required => 1,
@@ -44,6 +47,7 @@ has 'lefttop' => (
 );
 
 has 'rightbottom' => (
+	traits   => ['Clone'],
 	isa      => 'Image::WordCloud::Coordinate',
 	is       => 'ro',
 	coerce   => 1,

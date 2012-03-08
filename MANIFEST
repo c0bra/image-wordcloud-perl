@@ -22,6 +22,7 @@ lib/Image/WordCloud.pm
 lib/Image/WordCloud/Types.pm
 lib/Image/WordCloud/Word.pm
 lib/Image/WordCloud/Word/BoundingBox.pm
+lib/Image/WordCloud/Word/BoundingBox/Node.pm
 lib/Image/WordCloud/Coordinate.pm
 lib/Image/WordCloud/PlayingField/Node.pm
 lib/Image/WordCloud/StopWords/EN.pm

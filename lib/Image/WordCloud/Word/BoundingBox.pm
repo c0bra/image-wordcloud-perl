@@ -4,6 +4,8 @@ use namespace::autoclean;
 use Moose;
 use Image::WordCloud::Types qw(Color);
 use Image::WordCloud::Word;
+use Image::WordCloud::Word::BoundingBox::Node;
+
 use GD;
 use Storable qw(dclone);
 use Data::GUID;
@@ -39,19 +41,46 @@ sub _build_gd {
 	return GD::Image->new(10, 10, 1);
 }
 
-#===========================#
-# Attributes for Collisions #
-#===========================#
+#======================#
+# Bounding box / Nodes #
+#======================#
 
-has ['is_empty', 'is_full', 'is_hit'] => (
-	isa => 'Bool',
-	is  => 'rw',
-	init_arg => undef,
+has 'topnode' => (
+	isa        => 'Image::WordCloud::Word::BoundingBox::Node',
+	is         => 'rw',
+	init_arg   => undef,
+	lazy_build => 1,
 );
+sub _build_topnode {
+	my $self = shift;
+	return Image::WordCloud::BoundingBox::Node->new(boundingbox => $self);
+}
 
-#==============#
-# Bounding box #
-#==============#
+has 'hitboxes' => (
+	traits => ['Hash'],
+	isa    => 'HashRef[Image::WordCloud::Word::BoundingBox::Node]',
+	is       => 'rw',
+	lazy     => 1,
+	init_arg => undef,
+	default  => sub { {} },
+	handles  => {
+		list_hitboxes   => 'values',
+		set_hitbox      => 'set',
+    get_hitbox      => 'get',
+    has_no_hitboxes => 'is_empty',
+    num_hitboxes    => 'count',
+    delete_hitbox   => 'delete',
+    hitbox_pairs    => 'kv',
+	}
+);
+sub add_hitbox {
+	my $self = shift;
+	my $node = shift;
+	
+	$self->set_hitbox($node->guid => $node);
+	
+	return $self;
+}
 
 has '_box' => (
   traits		=> ['Array'],
@@ -64,14 +93,13 @@ has '_box' => (
 sub box {
 	my $self  = shift;
 	
-	if ($self->_box) {
-		return $self->_box;
+	if ($self->has_topnode) {
+		return $self->topnode;
 	}
 	else {
-		my $boxes = $self->_generate_boxes();
-		$self->_box($boxes);
+		$self->_generate_boxes();
 		
-		return $self->_box;
+		return $self->topnode;
 	}
 }
 
@@ -126,38 +154,38 @@ has ['temp_x_offset', 'temp_y_offset'] => (
 sub lefttop {
 	my $self = shift;
 	return (
-		($self->gdtext)[6] + $self->top_parent->temp_x_offset,
-		($self->gdtext)[7] + $self->top_parent->temp_y_offset
+		($self->gdtext)[6],
+		($self->gdtext)[7]
 	);
 }
 sub rightbottom {
 	my $self = shift;
 	return (
-		($self->gdtext)[2] + $self->top_parent->temp_x_offset,
-		($self->gdtext)[3] + $self->top_parent->temp_y_offset
+		($self->gdtext)[2],
+		($self->gdtext)[3]
 	);
 }
 sub top {
 	my $self = shift;
-	return ($self->gdtext)[5] + $self->top_parent->temp_y_offset;
+	return ($self->gdtext)[5];
 }
 sub y {
 	return shift->top();
 }
 sub bottom {
 	my $self = shift;
-	return ($self->gdtext)[1] + $self->top_parent->temp_y_offset;
+	return ($self->gdtext)[1];
 }
 sub left {
 	my $self = shift;
-	return ($self->gdtext)[0] + $self->top_parent->temp_x_offset;
+	return ($self->gdtext)[0];
 }
 sub x  {
 	return shift->left();
 }
 sub right {
 	my $self = shift;
-	return ($self->gdtext)[2] + $self->top_parent->temp_x_offset;
+	return ($self->gdtext)[2];
 }
 
 sub zero_offset {
@@ -491,84 +519,6 @@ sub _offset_boxes {
 	return $newboxes;
 }
 
-override 'recurse_split2' => sub {
-	my $self = shift;
-	
-	my ($box1, $box2) = $self->split2();
-	
-	# Only split if we got two children back from the split
-	if ($box1 && $box2) {
-		# Scan each box to see if it contains part of the word
-		#   Then for each box, if it's empty is empty nor full, continue to split them
-		foreach my $box ($box1, $box2) {
-			$box->scan_box_for_hits();
-			
-			if (! $box->is_empty && ! $box->is_full) {
-				$box->split2();
-			}
-		}
-	}
-	
-	return $self;
-};
-
-sub scan_box_for_hits {
-	my $self = shift;
-	
-	# Search through the pixels in this box for 
-	
-	my ($x, $y) = $self->lefttop();
-	
-	my $empty = undef;
-	my $full = undef;
-	my $found_fg = 0;
-	my $found_bg = 0;
-	while ($y <= $self->bottom) {
-		my $color = $self->top_parent->gd->getPixel($x, $y);
-		
-		# This pixel was a hit!
-		if ($color == $self->top_parent->gd_backcolor) {
-			$empty = 1 if ! defined $empty;
-			$found_bg = 1;
-		}
-		else {
-			$full = 1 if ! defined $full;
-			$found_fg = 1;
-		}
-		
-		# If we already know the box is neither full nor empty
-		#		(i.e. it has both back and forecolor) , stop looping over pixels.
-		last if $found_fg && $found_bg;
-		
-		$x++;
-		if ($x > $self->right) {
-			$x = $self->left;
-			$y++;
-		}
-	}
-	
-	# Every pixel in this box is the forecolor, no need to process it further
-	if (defined $full && $full && ! defined $empty && ! $empty) {
-		$self->is_full(1);
-		$self->is_hit(1);
-		
-		$self->top_parent->add_hitbox($self);
-	}
-	elsif (defined $empty && $empty && ! defined $full && ! $full) {
-		$self->is_empty(1);
-		
-		# ... don't need to do anything to empty boxes
-	}
-	# Neither full nor empty, still a hitbox though
-	else {
-		$self->is_hit(1);
-		
-		$self->top_parent->add_hitbox($self);
-	}
-	
-	return $self;
-}
-
 # Generate the hitbox tree for the image
 sub _generate_boxes {
 	my $self = shift;
@@ -577,10 +527,22 @@ sub _generate_boxes {
 	$self->zero_offset();
 	
 	# Generate the GD image for creating the hitboxes
-	$self->top_parent->gd( $self->_image() );
+	$self->gd( $self->_image() );
 	
-	# Use ::Box's method to recursively split this box into
-	$self->recurse_split2();
+	# Clear the topnode if there already is one
+	$self->clear_topnode();
+	
+	my $topnode = Image::WordCloud::Word::BoundingBox::Node->new(
+		boundingbox => $self,
+		lefttop     => [$self->lefttop],
+		rightbottom => [$self->rightbottom],
+	);
+	$self->topnode( $topnode );
+	
+	use Data::Printer;
+	#p $topnode->rightbottom; exit;
+	
+	$self->topnode->recurse_split2();
 	
 	# Reset the temporary coordinate offsets
 	$self->restore_offset();

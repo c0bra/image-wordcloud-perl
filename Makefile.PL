@@ -18,6 +18,7 @@ requires 'Moose';
 requires 'namespace::autoclean';
 requires 'MooseX::Aliases';
 requires 'MooseX::Types::Moose';
+requires 'MooseX::Clone';
 requires 'Params::Validate';
 requires 'List::Util';
 requires 'Scalar::Util';
