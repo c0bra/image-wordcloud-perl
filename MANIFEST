@@ -24,7 +24,7 @@ lib/Image/WordCloud/Word.pm
 lib/Image/WordCloud/Word/BoundingBox.pm
 lib/Image/WordCloud/Word/BoundingBox/Node.pm
 lib/Image/WordCloud/Coordinate.pm
-lib/Image/WordCloud/PlayingField/Node.pm
+lib/Image/WordCloud/PlayingField/Container.pm
 lib/Image/WordCloud/StopWords/EN.pm
 examples/gettysburg.png
 script/gettysburg.pl
