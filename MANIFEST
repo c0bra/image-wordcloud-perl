@@ -37,6 +37,7 @@ t/04-boringwords.t
 t/05-palette.t
 t/06-fonts.t
 t/07-collision.t
+t/08-utf8-wordsplit.t
 t/09-longwords.t
 t/10-random_ints.t
 t/11-coordinates.t
