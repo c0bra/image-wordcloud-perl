@@ -12,6 +12,7 @@ use List::Util qw(sum shuffle);
 use File::Spec;
 use File::ShareDir qw(:ALL);
 use File::Find::Rule;
+use Encode;
 use GD;
 use GD::Text::Align;
 use Color::Scheme;
@@ -227,6 +228,7 @@ sub words {
   	
   	# Strip non-word characters, lc() each word and build the counts
   	foreach my $word (map { lc } @words) {
+  		$word = Encode::decode('iso-8859-1', $word);
 			$word =~ s/\W//o;
 			$words{ $word }++;
 		}
@@ -242,6 +244,7 @@ sub words {
 			
 			# Strip non-word characters, lc() each word and build the counts
 			foreach my $word (map { lc } @words) {
+				$word = Encode::decode('iso-8859-1', $word);
 				$word =~ s/\W//o;
 				$words{ $word }++;
 			}
@@ -249,6 +252,8 @@ sub words {
 		# Argument is a scalar, assume it's a string of words
 		else {
 			my $words = $arg1;
+			$words = Encode::decode('iso-8859-1', $words);
+			
 			while ($words =~ /(?<!<)\b([\w\-']+)\b(?!>)/g) { #' <-- so UltraEdit doesnt fubar syntax highliting
 				my $word = lc($1);
 				$word =~ s/\W//o;
