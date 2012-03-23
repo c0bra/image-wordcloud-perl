@@ -1,5 +1,15 @@
 Revision history for Image-WordCloud
 
+0.02_05			2012.03.23
+  [BUG FIXES]
+  * Fixed strings with unicode (accented) characters being split improperly
+    (reported by sukria) [issue #1]
+	
+	* Releasing all the other queued up changes in master branch. There will
+	  still probably be problems with words not displaying properly or being
+	  outside of the playing field. This will (hopefully) be fixed in the
+	  0.04 release.
+
 0.02_02
 
 	[BUG FIXES]
@@ -31,7 +41,7 @@ Revision history for Image-WordCloud
 	[TESTS]
 	* Added tests so every method is covered. Added more tests for coverage.
 
-0.01_01		2012.01.27
+0.01_01			2012.01.27
 
 	First version, released on an unsuspecting world.
 
