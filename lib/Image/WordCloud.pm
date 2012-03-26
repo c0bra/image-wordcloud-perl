@@ -18,7 +18,7 @@ use GD::Text::Align;
 use Color::Scheme;
 use Math::PlanePath::TheodorusSpiral;
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 $ENV{IWC_DEBUG} = 0 if ! defined $ENV{IWC_DEBUG} || ! $ENV{IWC_DEBUG};
 
