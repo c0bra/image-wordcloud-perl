@@ -151,13 +151,13 @@ sub new {
 		}
 		
 		# Otherwise, try using ./share/fonts (so testing can be done)
-		if (! $opts{'font_path'}) {
+		if (! $opts{'font_path'} and exists $ENV{'HARNESS_ACTIVE'} and $ENV{'HARNESS_ACTIVE'}) {
 			my $local_font_path = File::Spec->catdir(".", "share", "fonts");
 			unless (-d $local_font_path) {
-				#carp sprintf "Local font path '%s' not found", $local_font_path;
-			}
-			
+				carp sprintf "Local font path '%s' not found", $local_font_path;
+			} else {
 			$opts{'font_path'} = $local_font_path;
+		}
 		}
 		
 		# If we still haven't found a font path, find the font path with File::ShareDir
