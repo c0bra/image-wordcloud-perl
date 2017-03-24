@@ -9,4 +9,5 @@ perl:
 addons:
   apt:
     packages:
-    - libgd2
+    - libgd2-xpm-dev
+    - build-essential
